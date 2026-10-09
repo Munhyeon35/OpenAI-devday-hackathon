@@ -1,0 +1,122 @@
+/* Readability pass: keep dashboard text at 12px or larger and strengthen muted copy. */
+.call-panel .hospital-info .hospital-meta,
+.call-panel .hospital-eta > span,
+.call-panel .conversation-footer,
+.call-panel .conversation-heading p,
+.call-panel .conversation-heading p > span,
+.call-panel .conversation-progress,
+.call-panel .message-label,
+.call-panel .call-result,
+.call-panel .retry-button,
+.call-panel .candidate-flow-status,
+.bulk-call-prompt button,
+.call-panel .candidate-detail {
+  font-size: var(--dashboard-text-meta);
+}
+
+.call-panel .hospital-eta strong { font-size: 24px; }
+.call-panel .demo-mini,
+.call-panel .conversation-start,
+.call-panel .message time,
+.call-panel .stream-caption,
+.candidate-flow-status > p > span,
+.candidate-flow-status summary,
+.bulk-call-prompt span,
+.call-panel .hospital-condition {
+  font-size: var(--dashboard-text-caption);
+}
+.call-panel .empty-state { color: #747c88; font-size: var(--dashboard-text-body); }
+.call-panel .conversation-heading p { color: #747c88; }
+.call-panel .conversation-heading p > span { color: #a2a8b1; }
+.call-panel .conversation-start { color: #858d98; }
+.call-panel .message-label { color: #707985; }
+.call-panel .message p { font-size: var(--dashboard-text-body); }
+.call-panel .message time,
+.call-panel .stream-caption { color: #78818d; }
+.call-panel .call-result { color: #707a87; }
+.call-panel .retry-button { color: #875f45; }
+.call-panel .candidate-flow-status { color: #53657d; }
+.bulk-call-prompt > div { font-size: var(--dashboard-text-body); }
+.bulk-call-prompt span { color: #805f43; }
+.call-panel .hospital-condition { color: #68778a; }
+.call-panel .candidate-detail { color: #56657a; }
+
+.pp-edit-button,
+.pp-stage-block > .pp-stage-label,
+.pp-symptom-meta,
+.pp-vitals dt,
+.pp-form-hint,
+.pp-dialog-actions > p,
+.pp-search-hint,
+.pp-selected-conditions,
+.pp-search-coordinates label,
+.pp-condition-options label,
+.pp-include-unknown,
+.pp-demo-loaded {
+  font-size: var(--dashboard-text-meta);
+}
+.pp-edit-button { color: #626a75; }
+.pp-stage-block > strong { font-size: 36px; }
+.pp-symptom-meta { color: #7b8088; }
+.pp-vitals dt { color: #737b85; }
+.pp-detail-group h3 { font-size: 16px; }
+.pp-detail-group dl > div { font-size: var(--dashboard-text-body); }
+.pp-dialog-header h2 { font-size: 26px; }
+.pp-dialog-header p { color: #747c86; font-size: var(--dashboard-text-body); }
+.pp-form-hint { color: #77808a; }
+.pp-dialog-actions > p { color: #78818c; }
+.pp-search-hint,
+.pp-selected-conditions { color: #5b677a; }
+.pp-search-conditions summary { font-size: var(--dashboard-text-body); }
+.pp-search-conditions summary span { color: #657183; font-size: var(--dashboard-text-caption); }
+.pp-demo-loaded { color: #83491d; }
+
+.reception-sidebar-ui .reception-card[data-sidebar="menu-button"] { font-size: var(--dashboard-text-body); }
+.reception-sidebar-ui .reception-number strong { font-size: var(--dashboard-text-meta); }
+.reception-sidebar-ui.is-collapsed .reception-number strong { font-size: 18px; }
+.reception-history-dialog .history-reception-badge {
+  color: #965f37;
+  font-size: var(--dashboard-text-caption);
+}
+.reception-history-dialog .history-summary p {
+  color: #786d65;
+  font-size: var(--dashboard-text-meta);
+}
+
+body .candidate-form p,
+body .candidate-form small,
+body .candidate-unknown,
+body .candidate-result-summary span,
+body .candidate-result-summary small,
+body .candidate-warnings,
+body .candidate-hospital p,
+body .candidate-checks li {
+  font-size: var(--dashboard-text-meta);
+}
+body .candidate-condition-group,
+body .candidate-empty,
+body .candidate-hospital-heading > strong {
+  font-size: var(--dashboard-text-body);
+}
+body .candidate-hospital-heading h3 { font-size: 17px; }
+body .candidate-hospital small,
+body .candidate-badges span,
+body .candidate-source {
+  font-size: var(--dashboard-text-caption);
+}
+
+.dashboard .olp-map-canvas .leaflet-control-attribution {
+  color: #666b65;
+  font-size: var(--dashboard-text-caption);
+}
+.dashboard .olp-map-error strong,
+.dashboard .olp-map-error [data-slot="alert-title"] {
+  font-size: var(--dashboard-text-meta);
+}
+.dashboard .olp-map-error small,
+.dashboard .olp-map-error button,
+.dashboard .olp-map-error [data-slot="alert-description"] {
+  color: #74736a;
+  font-size: var(--dashboard-text-caption);
+}
+.dashboard .olp-map-error button { color: #59594f; }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 import "./globals.css";
+import "@/components/dashboard/typography.css";
 
 export const metadata: Metadata = {
   title: "올뺑이 | AI 응급 이송 관제",

@@ -7,13 +7,16 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "voice:dev": "node --env-file=.env server/voice.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "twilio": "^6.1.2",
+    "ws": "^8.22.0",
     "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },

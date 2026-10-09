@@ -3,8 +3,8 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "올뺑이 | 응급 AI Caller",
-  description: "올뺑이, 응급 AI Caller 서비스",
+  title: "올뺑이 | AI 응급 이송 관제",
+  description: "병렬 AI 전화로 병원 수용 여부를 확인하는 올뺑이 응급 이송 관제 대시보드",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

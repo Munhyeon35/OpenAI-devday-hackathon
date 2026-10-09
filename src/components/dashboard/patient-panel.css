@@ -1,0 +1,102 @@
+.patient-panel {
+  display: block;
+  gap: 0;
+  flex-shrink: 0;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e1e4e6;
+  border-radius: 14px;
+  background: #fff;
+  color: #22272d;
+  box-shadow: 0 4px 18px #24313f0a;
+}
+.pp-header { display: flex; align-items: center; justify-content: space-between; min-height: 61px; padding: 0 19px; }
+.pp-heading, .pp-header-actions { display: flex; align-items: center; gap: 9px; }
+.pp-heading h2 { margin: 0; font-size: 19px; font-weight: 750; letter-spacing: -.65px; }
+.pp-header-actions { gap: 8px; }
+.pp-edit-button { display: inline-flex; align-items: center; gap: 5px; height: auto; padding: 5px 0; border: 0; background: transparent; color: #707781; font: inherit; font-size: 12px; cursor: pointer; }
+.pp-edit-button:hover { color: #eb772b; }
+.pp-icon-button { display: grid; place-items: center; width: 27px; height: 29px; padding: 0; border: 0; border-radius: 6px; color: #858c95; background: transparent; cursor: pointer; transition: color .15s, background .15s; }
+.pp-icon-button:hover { color: #262b32; background: #f3f5f6; }
+.pp-icon-button:focus-visible, .pp-edit-button:focus-visible, .pp-cancel-button:focus-visible, .pp-save-button:focus-visible { outline: 3px solid #ef7b3570; outline-offset: 3px; }
+.pp-action-divider { width: 1px; height: 13px; background: #e9ebed; }
+.pp-chevron { transition: transform .2s; }
+.pp-chevron-open { transform: rotate(180deg); }
+.pp-summary { padding: 0 18px 12px; }
+.pp-assessment-summary { display: flex; min-height: 107px; overflow: hidden; border: 1px solid #f1c49f; border-radius: 9px; background: #fffefd; }
+.pp-stage-block { display: flex; flex: 0 0 91px; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 9px 6px; border-right: 1px solid #f4d7bc; background: #fff3e6; color: #e77520; }
+.pp-stage-block > span { font-size: 10px; font-weight: 700; letter-spacing: -.2px; }
+.pp-stage-block > strong { font-size: 34px; font-weight: 750; line-height: 1.07; font-variant-numeric: tabular-nums; }
+.pp-stage-block > .pp-stage-label { padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font-size: 12px; font-weight: 650; }
+.pp-patient-summary { display: flex; flex: 1; flex-direction: column; justify-content: center; min-width: 0; padding: 10px 12px; }
+.pp-patient-summary h3 { margin: 0; font-size: 17px; line-height: 1.4; font-weight: 750; letter-spacing: -.5px; overflow-wrap: anywhere; }
+.pp-patient-summary h3 > span { color: #a1a5aa; margin: 0 2px; font-weight: 400; }
+.pp-associated { margin: 6px 0 0; color: #6f7781; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.pp-symptom-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 6px 0 0; color: #9a9ea5; font-size: 12px; line-height: 1.4; }
+.pp-symptom-meta > span { margin: 0 2px; color: #b3b7bd; }
+.pp-symptom-meta > strong { margin-left: 1px; color: #e8772d; font-weight: 650; }
+.pp-vitals { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1fr; gap: 0; margin: 13px 0 0; padding: 10px 0; border-radius: 7px; background: #f5f6f7; }
+.pp-vitals > div { min-width: 0; text-align: center; border-left: 1px solid #e4e7ea; }
+.pp-vitals > div:first-child { border-left: 0; }
+.pp-vitals dt { color: #8d949d; font-size: 12px; }
+.pp-vitals dd { margin: 4px 0 1px; font-size: 24px; line-height: 1.2; font-weight: 700; letter-spacing: -.7px; font-variant-numeric: tabular-nums; }
+.pp-vitals > div > span { font-size: 10px; color: #a0a6ae; }
+.pp-vital-separator { margin: 0 1px; color: #4b535e; font-weight: 500; }
+.pp-measurement { margin-top: 6px; color: #a2a8b0; font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.pp-details { height: 120px; max-height: 120px; overflow: hidden; border-top: 1px solid #edf0f2; }
+.pp-details [data-slot="scroll-area-viewport"] { overscroll-behavior: contain; }
+.pp-detail-group { padding: 14px 19px; border-bottom: 1px solid #edf0f2; }
+.pp-detail-group:last-child { border-bottom: 0; }
+.pp-detail-group h3 { margin: 0 0 11px; font-size: 14px; font-weight: 700; }
+.pp-detail-group dl { display: grid; gap: 8px; margin: 0; }
+.pp-detail-group dl > div { display: grid; grid-template-columns: 125px 1fr; gap: 12px; font-size: 13px; line-height: 1.6; }
+.pp-detail-group dt { color: #8e969f; }
+.pp-detail-group dd { margin: 0; color: #555e69; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pp-dialog { position: fixed; top: 50%; left: 50%; right: auto; bottom: auto; display: block; gap: 0; width: min(1080px, 90vw); max-width: none; max-height: 90vh; margin: 0; padding: 0; overflow: hidden; border: 1px solid #e3e5e8; border-radius: 16px; background: #fff; color: #252a31; box-shadow: 0 30px 100px #171c2440; }
+.pp-edit-form { display: flex; flex-direction: column; max-height: 90vh; }
+.pp-dialog-header { display: flex; flex-shrink: 0; align-items: flex-start; justify-content: space-between; padding: 24px 30px 21px; border-bottom: 1px solid #eceef0; }
+.pp-dialog-header h2 { margin: 0; font-size: 24px; font-weight: 750; letter-spacing: -.8px; }
+.pp-dialog-header p { margin: 8px 0 0; color: #989fa8; font-size: 14px; }
+.pp-dialog-header .pp-icon-button { margin-top: 2px; color: #9199a3; }
+.pp-form-body { flex: 1; height: min(650px, calc(90dvh - 180px)); min-height: 0; overflow: hidden; }
+.pp-form-body [data-slot="scroll-area-viewport"] { overscroll-behavior: contain; }
+.pp-form-body-content { padding: 18px 30px 25px; }
+.pp-form-hint { margin: 0 0 17px; color: #a0a6ae; font-size: 12px; }
+.pp-form-hint > span, .pp-required { color: #e9772e; }
+.pp-form-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.pp-form-column { min-width: 0; }
+.pp-form-column + .pp-form-column { padding-left: 30px; border-left: 1px solid #edf0f2; }
+.pp-form-group { min-width: 0; margin: 0 0 25px; padding: 0; border: 0; }
+.pp-form-group:last-of-type { margin-bottom: 0; }
+.pp-form-group legend { display: flex; align-items: center; gap: 7px; width: 100%; margin-bottom: 15px; padding: 0 0 12px; border-bottom: 1px solid #eceff1; font-size: 17px; font-weight: 750; letter-spacing: -.4px; }
+.pp-group-icon { display: inline-flex; color: #eb7a35; }
+.pp-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 15px; }
+.pp-field { display: flex; flex-direction: column; min-width: 0; gap: 7px; }
+.pp-field-label { display: flex; gap: 0; color: #737c88; font-size: 14px; line-height: 1.5; font-weight: 500; }
+.pp-field-wide { grid-column: 1 / -1; }
+.pp-field .pp-control { width: 100%; box-sizing: border-box; min-height: 44px; margin: 0; padding: 9px 11px; border: 1px solid #dce1e6; border-radius: 7px; outline: none; background: #f7f7f9; color: #303943; box-shadow: none; font: inherit; font-size: 16px; line-height: 1.5; transition: border-color .15s, box-shadow .15s; }
+.pp-field .pp-control:focus, .pp-field .pp-control:focus-visible { border-color: #eb985f; box-shadow: 0 0 0 3px #ef7b3517; }
+.pp-field input[type="time"] { min-width: 0; }
+.pp-field textarea { min-height: 72px; resize: vertical; }
+.pp-select-trigger { cursor: pointer; }
+.pp-select-trigger [data-slot="select-value"] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-select-content [data-slot="select-item"] { min-height: 36px; font-size: 14px; }
+.pp-form-error { margin: 20px 0 0; padding: 12px; border-radius: 7px; background: #fff0ed; color: #b3473c; font-size: 14px; }
+.pp-dialog-actions { display: flex; flex-shrink: 0; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 30px; border-top: 1px solid #e9edf0; background: #fff; }
+.pp-dialog-actions > p { margin: 0 auto 0 0; color: #a0a7b0; font-size: 12px; }
+.pp-cancel-button, .pp-save-button { min-height: 44px; padding: 0 23px; border: 1px solid #dce1e6; border-radius: 7px; background: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pp-cancel-button { color: #737c87; }
+.pp-cancel-button:hover { background: #f6f8f9; }
+.pp-save-button { border-color: #ed7b2f; background: var(--primary, #ef7b35); color: #fff; }
+.pp-save-button:hover { filter: brightness(.96); }
+@media (max-height: 760px) {
+  .pp-header { min-height: 55px; }
+  .pp-assessment-summary { min-height: 99px; }
+  .pp-patient-summary { padding-top: 10px; padding-bottom: 10px; }
+  .pp-vitals { margin-top: 11px; padding-top: 9px; padding-bottom: 9px; }
+  .pp-summary { padding-bottom: 10px; }
+  .pp-dialog-header { padding-top: 18px; padding-bottom: 16px; }
+  .pp-dialog-actions { padding-top: 14px; padding-bottom: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .pp-chevron, .pp-icon-button, .pp-field .pp-control { transition: none; } }

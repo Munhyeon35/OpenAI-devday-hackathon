@@ -1,0 +1,48 @@
+.olp-map-shell { position: relative; width: 100%; height: 100%; min-height: 240px; overflow: hidden; background: #efeeea; isolation: isolate; }
+.olp-map-canvas { width: 100%; height: 100%; background: #efeeea; font-family: inherit; }
+.olp-map-canvas .leaflet-tile-pane { filter: saturate(.65) brightness(1.055) contrast(.93); opacity: .9; }
+.olp-map-canvas .leaflet-control-attribution { padding: 3px 8px; background: rgba(255,255,255,.92); font-family: inherit; font-size: 10px; color: #797d78; }
+.olp-map-canvas .leaflet-control-attribution a { color: #646d65; }
+.olp-leaflet-marker, .olp-leaflet-ambulance { background: transparent; border: 0; }
+.olp-hospital-marker { position: relative; width: 34px; height: 34px; color: var(--marker-color); }
+.olp-hospital-pin { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; border: 2.5px solid #fff; border-radius: 50%; background: var(--marker-color); color: #fff; box-shadow: 0 2px 7px #29302224; transition: box-shadow .16s ease; }
+.olp-hospital-leader { position: absolute; top: 17px; left: 17px; height: 1px; background: var(--marker-color); opacity: .4; transform-origin: left center; pointer-events: none; }
+.olp-hospital-pin svg { width: 17px; height: 17px; }
+/* Cards describe pins; letting pointer events through prevents a nearby card from selecting the wrong hospital. */
+.olp-hospital-label { position: absolute; left: 42px; top: -16px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 145px; height: 66px; padding: 7px 10px; border: 1px solid #e6e7e2; border-radius: 9px; background: #fff; color: #282e29; box-shadow: 0 3px 12px #202b2210; line-height: 1.3; white-space: nowrap; pointer-events: none; transition: border-color .15s ease, box-shadow .15s ease; }
+.olp-hospital-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 750; letter-spacing: -.4px; }
+.olp-hospital-details { display: flex; align-items: center; gap: 6px; color: #737a72; font-size: 10px; font-weight: 500; }
+.olp-hospital-details b { color: #4b534c; font-weight: 650; }
+.olp-hospital-separator { color: #b4b8b2; }
+.olp-hospital-status { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 9px; font-weight: 700; color: var(--marker-color); }
+.olp-hospital-status::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.olp-hospital-marker--calling .olp-hospital-pin { box-shadow: 0 0 0 5px #eb791f15, 0 2px 7px #29302224; }
+.olp-leaflet-marker:hover .olp-hospital-label, .olp-leaflet-marker:focus-visible .olp-hospital-label, .olp-marker-selected .olp-hospital-label { border-color: var(--marker-color); box-shadow: 0 3px 16px #24301e16; }
+.olp-marker-selected .olp-hospital-pin { box-shadow: 0 0 0 5px color-mix(in srgb, var(--marker-color) 18%, transparent), 0 2px 7px #29302224; }
+.olp-leaflet-marker:focus-visible { outline: 3px solid #242824; outline-offset: 4px; border-radius: 50%; }
+.olp-ambulance-marker { width: 46px; height: 46px; position: relative; }
+.olp-ambulance-pin { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; border: 4px solid #fff; background: #ef7926; color: #fff; box-shadow: 0 0 0 12px #f17b2513, 0 0 0 25px #f17b2507, 0 4px 14px #99501e22; }
+.olp-ambulance-pin svg { width: 25px; height: 25px; }
+.olp-ambulance-label { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; line-height: 1.3; }
+.olp-ambulance-label strong { border: 1px solid #f6cbaa; border-radius: 5px; background: #fff5ec; color: #ca6420; padding: 4px 8px; font-size: 10px; font-weight: 750; }
+.olp-ambulance-label span { font-size: 9px; font-weight: 600; color: #72776e; text-shadow: 0 1px #fff, 1px 0 #fff, -1px 0 #fff, 0 -1px #fff; }
+.olp-map-controls { position: absolute; z-index: 1000; left: calc(20px + var(--map-sidebar-offset, 0px)); bottom: 90px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; transition: left var(--sidebar-motion-duration) var(--sidebar-motion-easing); }
+.olp-map-controls button { display: flex; align-items: center; justify-content: center; border: 0; background: #fff; color: #495149; cursor: pointer; }
+.olp-map-controls button:hover { background: #fff6ef; color: #db6e25; }
+.olp-map-controls button:focus-visible, .olp-map-error button:focus-visible { outline: 2px solid #dd7029; outline-offset: 3px; }
+.olp-map-locate { width: 42px; height: 42px; padding: 0; border: 1px solid #e3e5df !important; border-radius: 9px; box-shadow: 0 2px 8px #343b2010; }
+.olp-map-zoom { width: 42px; border: 1px solid #e3e5df; border-radius: 9px; overflow: hidden; box-shadow: 0 2px 8px #343b2010; }
+.olp-map-zoom button { width: 40px; height: 40px; }
+.olp-map-zoom button + button { border-top: 1px solid #edf0e9; }
+.olp-map-zoom [data-slot="button"] { border-radius: 0; }
+.olp-map-controls [data-slot="button"] svg { width: 20px; height: 20px; }
+.olp-map-error { position: absolute; z-index: 1100; left: calc((100% - var(--detail-width, 400px) + var(--map-sidebar-offset, 0px)) / 2); top: 48%; transform: translate(-50%,-50%); display: flex; align-items: center; gap: 10px; width: min(450px, calc(100% - var(--detail-width, 400px) - var(--map-sidebar-offset, 0px) - 40px)); border: 1px solid #e6ded5; border-radius: 12px; padding: 16px; background: #fff; box-shadow: 0 4px 30px #33332212; color: #86715f; }
+.olp-map-error > svg { flex-shrink: 0; }
+.olp-map-error > span { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.olp-map-error strong { font-size: 12px; color: #45433b; }
+.olp-map-error small { font-size: 10px; line-height: 1.5; color: #8d8c81; }
+.olp-map-error button { display: flex; align-items: center; gap: 5px; flex-shrink: 0; padding: 8px; background: #faf8f4; color: #66665a; border: 1px solid #e5e4da; border-radius: 6px; font-size: 10px; cursor: pointer; }
+.olp-map-error > div { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.olp-map-error [data-slot="alert-title"] { font-size: 12px; color: #45433b; }
+.olp-map-error [data-slot="alert-description"] { font-size: 10px; line-height: 1.5; color: #8d8c81; }
+@media (prefers-reduced-motion: reduce) { .olp-hospital-pin, .olp-hospital-label { transition: none; } }

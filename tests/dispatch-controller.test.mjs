@@ -15,6 +15,23 @@ function fixture(count=2){
 function memory(){const data=new Map();return {getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)};}
 function job(body,id='job-1') {return {id,mode:'demo',status:'running',created_at:clock,patient:body.patient,hospitals:body.hospitals.map((h,i)=>({...h,id:`${id}-${i}`,phase:'confirming',call_status:'in-progress',answered_at:clock,transcript:[],result:null,delivery:{status:'waiting'},hangup_pending:false}))};}
 
+test('default browser fetch keeps its global receiver for hospital searches and call submissions',async(t)=>{
+  const c=fixture(),requests=[];
+  t.mock.method(globalThis,'fetch',async function(url,options){
+    if(this!==globalThis)throw new TypeError('Illegal invocation');
+    requests.push(url);
+    return Response.json(url==='/api/hospitals/candidates'?c.candidateSearch.result:job(JSON.parse(options.body)));
+  });
+  const controller=new DispatchController([c]);
+  await controller.searchHospitals(c.id,c.patient,c.candidateSearch.parameters);
+  assert.equal(controller.state.cases[0].candidateSearch.status,'ready');
+  controller.setMode('demo');
+  await controller.startCalls(c.id,()=>true);
+  assert.equal(controller.state.batches[0].jobId,'job-1');
+  assert.ok(controller.state.cases[0].hospitals.every(h=>h.status==='calling'));
+  assert.deepEqual(requests,['/api/hospitals/candidates','/api/dispatches']);
+});
+
 test('Pre-KTAS mapping sends only entered admission facts and requested care; no invented name, vitals or severity',()=>{
   const c=fixture();c.candidateSearch.parameters.beds=['hv29'];
   const p=callPatient(c);

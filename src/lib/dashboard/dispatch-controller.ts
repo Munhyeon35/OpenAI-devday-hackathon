@@ -18,7 +18,8 @@ export class DispatchController {
   private fetcher:typeof fetch;
   private key:()=>string;
   constructor(cases:EmergencyCase[], fetcher:typeof fetch=fetch, key=()=>crypto.randomUUID()) {
-    this.fetcher=fetcher;this.key=key;
+    // Browser fetch must not receive this controller as its Window receiver.
+    this.fetcher=fetcher.bind(globalThis);this.key=key;
     this.state={cases,batches:[],jobs:{}};
   }
   subscribe=(listener:()=>void)=>{this.listeners.add(listener);return()=>{this.listeners.delete(listener);};};

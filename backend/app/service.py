@@ -10,6 +10,7 @@ from uuid import uuid4
 import httpx
 
 from app.models import Decision
+from app.postcall import classify
 
 log = logging.getLogger(__name__)
 TERMINAL_CALLS = {"completed", "busy", "failed", "no-answer", "canceled"}
@@ -26,6 +27,7 @@ class DispatchService:
         self.tasks = set()
         self.http = httpx.AsyncClient(timeout=10, follow_redirects=False)
         self.worker = None
+        self.processing = set()
 
     def spawn(self, coroutine):
         task = asyncio.create_task(coroutine)
@@ -119,7 +121,7 @@ class DispatchService:
             h["result"] = {**result, "confirmed_at": now(), "event_id": str(uuid4())}
             h["phase"] = "finished"
             h["hangup_pending"] = live and bool(h["call_sid"]) and h["call_status"] not in TERMINAL_CALLS
-            h["hangup_after"] = time.time() + 5  # Allow the final spoken acknowledgment.
+            h["hangup_after"] = 0  # Result processing never holds the telephone open.
             h["delivery"]["status"] = "pending" if self.config.backbed_url and live else "local_only"
         self.store.update_hospital(job_id, hospital_id, update)
 
@@ -128,6 +130,45 @@ class DispatchService:
             availability="unknown", reason=reason, evidence_quote="", respondent="",
             explicit_confirmation=False, patient_context_confirmed=False,
         ).model_dump())
+
+    def end_voice(self, job_id, hospital_id, ready=True):
+        """Persist a recovery job; no model or backend request on the media path."""
+        def update(h):
+            if not h.get("voice_ended_at"):
+                h["voice_ended_at"] = now()
+            if h["result"] is None:
+                h["phase"] = "processing"
+                h.setdefault("postcall", {"status": "pending", "attempts": 0, "next_attempt": 0})
+                h["postcall"]["ready"] = ready
+            h["hangup_pending"] = bool(h["call_sid"]) and h["call_status"] not in TERMINAL_CALLS
+            h["hangup_after"] = 0
+        self.store.update_hospital(job_id, hospital_id, update)
+
+    async def process_postcall(self, job_id, hospital_id):
+        try:
+            h = self.hospital(job_id, hospital_id)
+            state = {**h["postcall"], "status": "running", "attempts": h["postcall"]["attempts"] + 1}
+            self.patch(job_id, hospital_id, postcall=state)
+            if not any(t["speaker"] == "hospital" and t["text"].strip() for t in h["transcript"]):
+                self.finish_unknown(job_id, hospital_id, "통화에서 병원의 답변을 확인하지 못했습니다")
+            else:
+                result = await classify(self.http, self.config, self.store.get(job_id), h)
+                self.record_decision(job_id, hospital_id, result)
+            self.patch(job_id, hospital_id, postcall={**state, "status": "done"})
+        except asyncio.CancelledError:
+            raise  # Persisted running work is recovered on restart.
+        except Exception as exc:
+            log.warning("Post-call processing failed (%s)", type(exc).__name__)
+            state = self.hospital(job_id, hospital_id)["postcall"]
+            exhausted = state["attempts"] >= 3
+            self.patch(job_id, hospital_id, postcall={
+                **state, "status": "failed" if exhausted else "pending",
+                "next_attempt": time.time() + 2 ** state["attempts"],
+            })
+            if exhausted:
+                self.finish_unknown(job_id, hospital_id, "통화 후 결과 분석 실패. 수용 확답을 확인하지 못했습니다")
+        finally:
+            self.processing.discard((job_id, hospital_id))
 
     def bind_sid(self, job_id, hospital_id, sid):
         hospital = self.hospital(job_id, hospital_id)
@@ -145,7 +186,12 @@ class DispatchService:
             return
         if status in TERMINAL_CALLS:
             self.patch(job_id, hospital_id, call_status=status, hangup_pending=False)
-            self.finish_unknown(job_id, hospital_id, f"확답 없이 통화 종료 ({status})")
+            if h.get("stream_claimed") or h.get("postcall"):
+                # The live bridge may still be draining final transcript events.
+                if not h.get("postcall"):
+                    self.end_voice(job_id, hospital_id, ready=False)
+            else:
+                self.finish_unknown(job_id, hospital_id, f"확답 없이 통화 종료 ({status})")
         elif status in CALL_ORDER and CALL_ORDER[status] >= CALL_ORDER.get(h["call_status"], 0):
             self.patch(job_id, hospital_id, call_status=status)
 
@@ -208,7 +254,7 @@ class DispatchService:
 
     async def maintain_hospital(self, job, h):
         jid, hid = job["id"], h["id"]
-        if not h["result"] and time.time() - job["started_at"] > self.config.max_call_seconds + 45:
+        if not h["result"] and not h.get("postcall") and time.time() - job["started_at"] > self.config.max_call_seconds + 45:
             self.finish_unknown(jid, hid, "통화 제한시간 내 수용 확답을 받지 못했습니다")
             h = self.hospital(jid, hid)
         if self.gateway and h["hangup_pending"] and h["call_sid"] and h["hangup_after"] <= time.time():
@@ -219,7 +265,14 @@ class DispatchService:
             except Exception as exc:
                 log.warning("Hangup failed (%s)", type(exc).__name__)
                 self.patch(jid, hid, hangup_attempts=attempts, hangup_after=time.time() + min(60, 2 ** min(attempts, 6)))
-        if self.config.backbed_url and h["delivery"]["status"] == "pending" and h["delivery"]["next_attempt"] <= time.time():
+        h = self.hospital(jid, hid)
+        ended = h["call_status"] in TERMINAL_CALLS or not h["call_sid"]
+        state = h.get("postcall", {})
+        if (not h["result"] and state.get("status") == "pending" and state.get("ready")
+                and ended and state.get("next_attempt", 0) <= time.time() and (jid, hid) not in self.processing):
+            self.processing.add((jid, hid))
+            self.spawn(self.process_postcall(jid, hid))
+        if ended and self.config.backbed_url and h["delivery"]["status"] == "pending" and h["delivery"]["next_attempt"] <= time.time():
             await self.deliver(job, h)
 
     async def maintenance(self):
@@ -234,7 +287,12 @@ class DispatchService:
         for job in self.store.all():
             for hospital in job["hospitals"]:
                 if not hospital["result"]:
-                    self.finish_unknown(job["id"], hospital["id"], "서버 재시작으로 통화 세션이 종료되었습니다")
+                    if hospital.get("postcall") or hospital.get("stream_claimed"):
+                        self.end_voice(job["id"], hospital["id"])
+                        state = self.hospital(job["id"], hospital["id"])["postcall"]
+                        self.patch(job["id"], hospital["id"], postcall={**state, "status": "pending"})
+                    else:
+                        self.finish_unknown(job["id"], hospital["id"], "서버 재시작으로 통화 세션이 종료되었습니다")
         self.worker = asyncio.create_task(self.maintenance())
 
     async def close(self):
@@ -248,7 +306,10 @@ class DispatchService:
         for job in self.store.all():
             for h in job["hospitals"]:
                 if not h["result"]:
-                    self.finish_unknown(job["id"], h["id"], "서버 종료로 통화가 중단되었습니다")
+                    if h.get("postcall") or h.get("stream_claimed"):
+                        self.end_voice(job["id"], h["id"])
+                    else:
+                        self.finish_unknown(job["id"], h["id"], "서버 종료로 통화가 중단되었습니다")
                 if self.config.mode == "live" and job["mode"] == "live" and h["call_sid"] and h["call_status"] not in TERMINAL_CALLS:
                     pending.append(self.gateway.hangup(h["call_sid"]))
         if pending:

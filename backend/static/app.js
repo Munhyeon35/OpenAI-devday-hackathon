@@ -2,7 +2,7 @@ const $ = (selector) => document.querySelector(selector);
 const form = $('#dispatch-form');
 let config, jobId = sessionStorage.getItem('dispatchId'), timer, active = false;
 let requestKey, requestFingerprint;
-const phases = {queued:'발신 대기',dialing:'전화 연결 중',connected:'응급실 연결됨',confirming:'환자 정보 전달 · 수용 확답 확인 중',finished:'확인 종료'};
+const phases = {queued:'발신 대기',dialing:'전화 연결 중',connected:'응급실 연결됨',confirming:'환자 정보 전달 · 수용 확답 확인 중',processing:'통화 종료 · 결과 정리 중',finished:'확인 종료'};
 const labels = {accepted:'수용 가능',rejected:'수용 불가',unknown:'미확인'};
 const deliveryLabels = {waiting:'답변 대기',local_only:'백엔드 저장 완료',pending:'백엔드 전송 중',delivered:'백엔드 전송 완료',failed:'백엔드 전송 실패'};
 const escape = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

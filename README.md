@@ -1,5 +1,7 @@
 # 올뺑이 | AI Voice Caller
 
+현재 기준 버전은 **v1 (1.0.0)**입니다. [변경 기록](CHANGELOG.md) · Git 태그 `v1`
+
 Twilio + OpenAI Realtime으로 한국어 음성 대화를 실험하는 프로젝트입니다.
 Vapi 없이 동작합니다. 브라우저 대화와 실제 전화는 서로 다른 실행 경로입니다.
 

@@ -33,7 +33,7 @@ pytest -q
 | `OPERATOR_TOKEN` | 최소 24자 운영자 토큰. UI와 API 접근에 사용 |
 | `OPENAI_API_KEY` | GPT-Live와 backend 모델 접근 권한이 있는 프로젝트 키 |
 | `OPENAI_LIVE_MODEL=gpt-live-1` | 음성 모델 |
-| `OPENAI_BACKEND_MODEL=gpt-6-luna` | GPT-Live Responses delegation으로 결과를 해석하는 모델 |
+| `OPENAI_BACKEND_MODEL=gpt-6-luna` | 통화 종료 후 Responses API로 결과를 해석하는 모델 |
 | `OPENAI_VOICE=marin` | 음성 |
 | `TWILIO_ACCOUNT_SID` | Twilio 계정 SID |
 | `TWILIO_AUTH_TOKEN` | REST 인증 및 웹훅 서명 검증 |
@@ -64,8 +64,10 @@ flowchart LR
     API --> B[Twilio 발신 B]
     A <--> LA[GPT-Live A]
     B <--> LB[GPT-Live B]
-    LA --> BA[Responses backend A]
-    LB --> BB[Responses backend B]
+    LA --> EA[통화 A 종료]
+    LB --> EB[통화 B 종료]
+    EA --> BA[Responses backend A]
+    EB --> BB[Responses backend B]
     BA --> D[수용 확답 검증 · SQLite 저장]
     BB --> D
     D --> UI
@@ -74,11 +76,15 @@ flowchart LR
 
 - Twilio `Connect/Stream`의 PCMU 8 kHz 음성을 GPT-Live의 `session.input_audio.append`로 전달하고 `session.output_audio.delta`를 전화로 재생합니다. 두 병원은 세션·통화 SID·프롬프트·발언·결과가 분리됩니다.
 - GPT-Live는 `wss://api.openai.com/v1/live/sessions`에서 `session.start` → `session.started`로 연결합니다. 기존 Realtime API 이벤트와 혼용하지 않습니다.
-- GPT-Live Responses delegation의 완료된 함수 호출(`response.output_item.done`)을 수집하고, 해당 응답 완료 후 `record_hospital_decision`을 실행합니다. 함수 결과는 `response.item.create`와 `response.create`로 되돌려 줍니다.
+- 통화 시작 시 최대 1.5초 인사를 기다립니다(음성 세션 준비가 늦으면 준비 직후). 먼저 발언하면 발언이 끝나고 입력이 GPT-Live에 전달된 뒤 인사에 응답하며, 아무 말이 없으면 AI가 먼저 소개와 담당자 확인 질문을 합니다. 시작 지시는 한 번만 전송하고, 인사 타이머 완료를 통화 종료로 취급하지 않습니다.
+- WebRTC VAD(aggressive mode 3)가 120ms 연속 발언을 감지하고 재생 대기 음성이 있을 때만 Twilio `clear`와 서버 큐 비우기를 실행합니다. 입력은 항상 GPT-Live에 전달하고, VAD가 활성화됐다는 이유로 이후 AI 음성을 버리지 않습니다. 모델 오디오 조각을 그대로 전달하고 재생 타이밍은 Twilio가 담당합니다. `mark`는 종료 시 재생 확인에만 사용하며 전송 속도를 제한하지 않습니다. 지속적인 소음으로 시작 대기가 무한해지지 않도록 추가 대기는 최대 3초로 제한합니다.
+- 한국어 안내를 짧은 문장과 빠른 말투로 지시합니다. GPT-Live의 수치형 `speed` 설정은 사용하지 않으며 실제 발화 속도는 모델 출력에 따라 달라집니다.
+- GPT-Live **client delegation**은 이 앱에서 통화 종료만 뜻합니다. 짧은 감사 인사 뒤 종료 신호를 내도록 지시하고, 서버는 최대 1초의 잔여 인사 재생 후 미디어 연결을 닫습니다. TwiML의 `<Hangup>`과 독립적인 REST 종료 재시도를 사용합니다. 결과 모델 응답을 기다리지 않습니다.
+- 전화 종료 후 최종 전사를 최대 3초 수집하고, 별도 작업에서 Responses API 구조화 출력으로 결과를 분석합니다. SQLite의 `postcall` 작업 상태를 이용해 분석 실패는 최대 3회 재시도하고 서버 재시작 시 이어서 처리합니다. 그동안 화면에는 `통화 종료 · 결과 정리 중`을 표시합니다.
 - 병원별 예상 도착시간은 **지금 출발하는 경우의 소요시간**입니다. 목적지 주소/지도 API가 없으므로 위치로 ETA를 추정하지 않습니다. 출발이나 이송을 확정하지 않습니다.
 - 수용 가능/불가에는 환자·ETA 확인, 담당자 역할, 재확답, 병원 발언 인용이 필요합니다. 인용이 해당 병원의 입력 전사에 실제로 존재하는지도 검사합니다. 전사와 모델의 해석 오류 가능성까지 제거하는 검증은 아닙니다.
 - 무응답, 통화 중, 실패, 끊김, 시간 초과, 모호하거나 조건부인 답변은 **`unknown`**입니다. 수용 불가로 추정하지 않습니다.
-- 결과가 생기면 통화 마무리 시간을 5초 둔 뒤 종료합니다. 서버 종료 시 종료를 시도하고, 재시작 시 중단된 요청을 `unknown`으로 복구합니다. 종료 REST 요청 실패는 재시도하며 Twilio `TimeLimit`도 적용합니다.
+- 통화 종료 콜백이 결과 분석보다 먼저 도착해도 결과를 `unknown`으로 덮어쓰지 않습니다. 통화가 시작되지 않은 요청은 재시작 시 `unknown`으로 처리하며, 진행된 통화는 전사를 분석합니다. 자동 재발신은 하지 않고 Twilio `TimeLimit`도 유지합니다.
 - 운영자 요청의 `Idempotency-Key`는 중복 발신을 방지합니다. 같은 키에 다른 입력은 409입니다. Twilio REST 타임아웃은 발신 여부가 불명확하므로 자동 재발신하지 않습니다. 지연된 콜백이 도착하면 해당 통화를 종료합니다.
 
 ## API
@@ -133,7 +139,7 @@ flowchart LR
 
 ## 외부 gpt-backbed 웹훅 계약
 
-각 병원 결과가 확정될 때 각각 POST합니다. 둘 다 끝날 때까지 기다리지 않습니다. DB 저장은 항상 먼저 수행하며, 전송 실패가 수용 결과를 바꾸지 않습니다.
+각 병원의 통화가 종료되고 결과가 확정되면 각각 POST합니다. 둘 다 끝날 때까지 기다리지 않습니다. DB 저장은 항상 먼저 수행하며, 전송 실패가 수용 결과를 바꾸지 않습니다.
 
 ```json
 {

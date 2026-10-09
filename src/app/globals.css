@@ -32,6 +32,9 @@
   --sidebar-accent-foreground: #bf4e12;
   --font-sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, monospace;
+  --dashboard-text-title: 18px;
+  --dashboard-text-body: 14px;
+  --dashboard-text-meta: 12px;
   --calling: #d45a14;
   --available: #16856b;
   --unavailable: #d95960;
@@ -109,10 +112,10 @@ button svg { flex-shrink: 0; }
 .is-collapsed .sidebar-brand-row { justify-content: center; padding: 0; height: 69px; flex-basis: 69px; border-bottom: 0; }
 .sidebar-tools { padding: 23px 17px 0; }
 .sidebar-title { display: flex; align-items: center; gap: 8px; margin-bottom: 17px; }
-.sidebar-title h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.sidebar-title h2 { margin: 0; font-size: var(--dashboard-text-title); font-weight: 700; }
 .sidebar-title > span { font-size: 13px; color: #8b8b92; }
 .case-search { height: 38px; padding: 0 9px; display: flex; align-items: center; gap: 7px; border: 1px solid #e4e4e7; background: #fafafa; border-radius: 7px; color: #9898a0; }
-.case-search input { min-width: 0; width: 100%; border: 0; outline: none; background: transparent; font-size: 11px; color: #404048; }
+.case-search input { min-width: 0; width: 100%; border: 0; outline: none; background: transparent; font-size: var(--dashboard-text-meta); color: #404048; }
 .case-search input::placeholder { color: #93939c; }
 .case-search button { display: flex; align-items: center; }
 .case-tabs { display: flex; gap: 25px; border-bottom: 1px solid #e8e8eb; margin-top: 15px; }
@@ -127,7 +130,7 @@ button svg { flex-shrink: 0; }
 .reception-number { font-size: 12px; color: #777780; }
 .reception-number strong { font-weight: 650; font-variant-numeric: tabular-nums; }
 .selected .reception-number { color: #b76838; }
-.case-status { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 11px; font-weight: 600; color: #787880; }
+.case-status { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: var(--dashboard-text-meta); font-weight: 600; color: #787880; }
 .case-status i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .case-status.searching { color: #c65313; }
 .case-status.assigned { color: #228058; }
@@ -135,37 +138,35 @@ button svg { flex-shrink: 0; }
 .reception-unit { display: block; font-size: 18px; line-height: 1.3; font-weight: 750; margin-bottom: 8px; }
 .reception-patient { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
 .reception-patient strong { font-size: 14px; font-weight: 550; }
-.reception-patient > span { font-size: 13px; color: #71717a; }
-.reception-card-bottom { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #ededf0; padding-top: 11px; margin-top: 14px; font-size: 11px; color: #8d8d95; }
+.reception-patient > span { font-size: var(--dashboard-text-meta); color: #71717a; }
+.reception-card-bottom { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #ededf0; padding-top: 11px; margin-top: 14px; font-size: var(--dashboard-text-meta); color: #8d8d95; }
 .selected .reception-card-bottom { border-color: #f1ded0; }
 .reception-card-bottom > span { display: flex; align-items: center; gap: 5px; }
-.reception-card-bottom time { font-size: 13px; color: #66666e; font-variant-numeric: tabular-nums; }
+.reception-card-bottom time { font-size: var(--dashboard-text-meta); color: #66666e; font-variant-numeric: tabular-nums; }
 .is-collapsed .reception-list { padding: 0 8px 15px; gap: 10px; }
 .is-collapsed .reception-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 85px; padding: 14px 5px; border-radius: 9px; text-align: center; }
 .compact-reception-number { display: flex; align-items: baseline; gap: 4px; color: #787880; font-size: 11px; }
 .compact-reception-number strong { color: #3a3a40; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .selected .compact-reception-number, .selected .compact-reception-number strong { color: var(--primary); }
-.is-collapsed .case-status { font-size: 11px; gap: 4px; }
-.sidebar-footer { display: flex; align-items: center; gap: 6px; border-top: 1px solid #eaeaed; padding: 18px; font-size: 10px; color: #898992; }
-.sidebar-footer > span:last-child { margin-left: auto; color: #a0a0a8; }
-.demo-dot { display: block; width: 5px; height: 5px; background: #c48c60; border-radius: 50%; }
+.is-collapsed .case-status { font-size: var(--dashboard-text-meta); gap: 4px; }
 
 .workspace { --detail-width: 400px; --map-sidebar-offset: calc(var(--reception-sidebar-width) - var(--sidebar-width-icon)); position: relative; flex: 1; min-width: 0; height: 100%; overflow: hidden; background: #e8ece4; isolation: isolate; }
 .sidebar-collapsed .workspace { --map-sidebar-offset: 0px; }
 /* Keep the map's viewport fixed while the shadcn sidebar reveals or covers it. */
 .map-area { position: absolute; inset: 0; left: auto; width: calc(max(100vw, 1280px) - var(--sidebar-width-icon)); z-index: 0; }
 .map-loading { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; background: #e8ece4; color: #767e70; font-size: 14px; }
-.case-header { position: absolute; top: 20px; left: 20px; z-index: 10; width: calc(100% - var(--detail-width) - 60px); max-width: 630px; padding: 20px; border: 1px solid #e2e2e6; border-radius: 12px; background: white; box-shadow: 0 2px 10px #2222220a; }
-.case-heading-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.selected-reception-number { color: #777780; font-size: 14px; white-space: nowrap; }
-.case-heading-divider { display: block; width: 1px; height: 23px; background: #e3e3e8; }
-.case-heading-row h1 { font-size: 19px; font-weight: 750; line-height: 1.3; margin: 0; letter-spacing: -.04em; }
-.case-main-status { padding: 7px 9px; border-radius: 6px; background: #fff0e5; font-size: 12px; margin-left: auto; }
+.case-header { position: absolute; top: 20px; left: 20px; z-index: 10; width: max-content; max-width: calc(100% - var(--detail-width) - 60px); padding: 12px 14px; border: 1px solid #e2e2e6; border-radius: 12px; background: white; box-shadow: 0 2px 10px #2222220a; }
+.case-heading-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.selected-reception-number { color: #777780; font-size: 16px; line-height: 1.3; white-space: nowrap; }
+.case-heading-divider { display: block; width: 1px; height: 18px; background: #e3e3e8; }
+.case-heading-row h1 { font-size: var(--dashboard-text-title); font-weight: 750; line-height: 1.3; margin: 0; letter-spacing: -.04em; }
+.case-main-status { padding: 4px 6px; border-radius: 6px; background: #fff0e5; font-size: var(--dashboard-text-meta); margin-left: auto; }
 .case-main-status.assigned { background: #eaf5ee; }
 .case-main-status.completed { background: #f0f0f2; }
-.case-metadata { display: flex; align-items: center; gap: 7px; color: #85858d; font-size: 14px; margin-top: 16px; }
-.case-metadata > strong { color: #29292d; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0; }
-.history-button { display: flex; align-items: center; gap: 4px; margin-left: auto; padding: 4px 0 4px 8px; font-size: 13px; color: #777780; }
+.case-metadata { display: flex; align-items: center; gap: 6px; color: #85858d; font-size: var(--dashboard-text-meta); margin-top: 8px; }
+.case-elapsed-time { display: inline-block; flex: 0 0 52px; width: 52px; color: #29292d; font-family: var(--font-sans); font-size: var(--dashboard-text-body); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap; }
+.case-metadata > [data-slot="button"] { height: 28px; gap: 4px; padding: 0 6px; font-size: var(--dashboard-text-meta); }
+.history-button { display: flex; align-items: center; gap: 4px; margin-left: auto; padding: 4px 0 4px 8px; font-size: var(--dashboard-text-meta); color: #777780; }
 .history-button:hover { color: var(--primary); }
 .detail-column { position: absolute; z-index: 10; top: 20px; right: 20px; bottom: 20px; width: var(--detail-width); min-height: 0; display: flex; flex-direction: column; gap: 14px; }
 .detail-column > .patient-panel { flex-shrink: 0; }
@@ -202,8 +203,8 @@ button svg { flex-shrink: 0; }
 .demo-mini { display: inline-block; background: #f5f3f0; color: #9b8c7f; font-size: 10px; border-radius: 4px; padding: 3px 6px; }
 .save-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1200; display: flex; align-items: center; gap: 9px; padding: 15px 22px; border: 1px solid #d4e3d6; background: white; border-radius: 10px; color: #3e754e; font-size: 14px; box-shadow: 0 5px 25px #243f0c20; }
 
-@media (min-width: 1500px) { .workspace { --detail-width: 440px; }.reception-sidebar { width: 280px; flex-basis: 280px; }.reception-card { padding: 17px; }.reception-patient strong { font-size: 14px; }.reception-patient > span { font-size: 12px; }.case-heading-row h1 { font-size: 21px; }.case-main-status { font-size: 13px; }.case-header { padding: 22px; }.case-metadata { font-size: 15px; } }
-@media (max-height: 780px) { .sidebar-brand-row { height: 72px; flex-basis: 72px; }.sidebar-tools { padding-top: 18px; }.reception-card { padding: 13px 14px; }.reception-card-top { margin-bottom: 11px; }.reception-card-bottom { margin-top: 10px; padding-top: 9px; }.detail-column { gap: 12px; top: 16px; bottom: 16px; right: 16px; }.case-header { top: 16px; left: 16px; padding: 17px; }.case-heading-row { gap: 8px; }.case-heading-row h1 { font-size: 18px; }.case-metadata { margin-top: 12px; }.map-legend { gap: 12px; padding: 12px 14px; } }
+@media (min-width: 1500px) { .workspace { --detail-width: 440px; }.reception-sidebar { width: 280px; flex-basis: 280px; }.reception-card { padding: 17px; } }
+@media (max-height: 780px) { .sidebar-brand-row { height: 72px; flex-basis: 72px; }.sidebar-tools { padding-top: 18px; }.reception-card { padding: 13px 14px; }.reception-card-top { margin-bottom: 11px; }.reception-card-bottom { margin-top: 10px; padding-top: 9px; }.detail-column { gap: 12px; top: 16px; bottom: 16px; right: 16px; }.case-header { top: 16px; left: 16px; }.map-legend { gap: 12px; padding: 12px 14px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition: none !important; } }
 
 .case-header[data-slot="card"] { gap: 0; }

@@ -106,7 +106,7 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
         </>
       ) : (
         <>
-          <div className="call-panel-heading"><h2>병원 연락 <Badge variant="secondary" className="call-count">{hospitals.length}</Badge></h2></div>
+          <div className="call-panel-heading"><h2>병원 연락</h2></div>
           <Tabs className="call-list-tabs" value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
             <div className="call-toolbar">
               <TabsList className="call-tabs" aria-label="전화 상태 필터">
@@ -138,7 +138,6 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
               </TabsContent>;
             })}
           </Tabs>
-          <div className="call-panel-footnote"><span className={`call-live-dot${liveCount ? " active" : ""}`} /><span><strong>{liveCount}개</strong> 병원과 통화 중</span><Badge variant="outline" className="demo-mini">데모 통화</Badge></div>
         </>
       )}
     </Card>

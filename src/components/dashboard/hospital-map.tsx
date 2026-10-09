@@ -31,7 +31,8 @@ const STATUS_GLYPHS: Record<Hospital["status"], string> = {
   unavailable: '<path d="m6 6 12 12M18 6 6 18"/>',
   error: '<path d="M10.3 3.9 1.8 18.6A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.4L13.7 3.9a2 2 0 0 0-3.4 0ZM12 9v4m0 4h.01"/>',
 };
-const ambulanceGlyph = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17h5M3 17H2V6a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v11m0-9h4l3 5v4h-3M15 13h7M7 8v5m-2.5-2.5h5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>';
+// Lucide Ambulance, rendered as SVG for the Leaflet marker.
+const ambulanceGlyph = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 10H6M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14M8 8v4M9 18h6"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>';
 
 function hospitalIcon(hospital: Hospital) {
   const wrapper = document.createElement("div");

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { EmergencyCase } from "@/lib/dashboard/types";
@@ -87,11 +87,6 @@ export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, o
           </SidebarMenu>
         </ScrollArea>
       </SidebarContent>
-      <Collapsible open={!collapsed} className="sidebar-footer-collapse">
-        <CollapsibleContent forceMount className="sidebar-reveal" aria-hidden={collapsed} inert={collapsed}>
-          <div className="sidebar-reveal-inner"><SidebarFooter className="sidebar-footer"><span className="demo-dot" />데모 데이터<span>서울특별시</span></SidebarFooter></div>
-        </CollapsibleContent>
-      </Collapsible>
     </Sidebar>
   );
 }

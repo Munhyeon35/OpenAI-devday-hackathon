@@ -55,7 +55,6 @@ export function Dashboard() {
           <CallPanel key={`calls-${selectedCase.id}`} canRetry={selectedCase.status !== "completed"} hospitals={selectedCase.hospitals} selectedHospitalId={selectedHospitalId} onSelectHospital={setSelectedHospitalId} streamingText={stream.text} streamingRole={stream.role} onRetry={(hospitalId) => retryCall(selectedCase.id, hospitalId)} />
         </aside>
         <Card className="map-legend" aria-label="병원 상태 범례">{(["calling", "available", "unavailable", "error"] as CallStatus[]).map((status) => <Badge variant="outline" key={status}><span className={`status-dot ${status}`} /><span>{CALL_STATUS[status].shortLabel}</span><strong>{counts[status]}</strong></Badge>)}</Card>
-        <p className="map-demo-note">환자·통화·거리·예상 시간은 시연용 데이터입니다.</p>
       </main>
       {saved && <Alert className="save-toast" role="status"><Check size={18} /><AlertDescription>환자 정보를 수정했습니다.</AlertDescription></Alert>}
     </SidebarProvider>

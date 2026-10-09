@@ -172,7 +172,7 @@ button svg { flex-shrink: 0; }
 .detail-column { position: absolute; z-index: 10; top: 20px; right: 20px; bottom: 20px; width: var(--detail-width); min-height: 0; display: flex; flex-direction: column; gap: 14px; }
 .detail-column > .patient-panel { flex-shrink: 0; }
 .detail-column > .call-panel { flex: 1; min-height: 225px; }
-.map-legend { position: absolute; z-index: 10; left: 20px; bottom: 29px; display: flex; align-items: center; gap: 17px; padding: 14px 16px; border: 1px solid #e1e1e5; border-radius: 9px; background: #fff; box-shadow: 0 2px 9px #27272a0a; }
+.map-legend { position: absolute; z-index: 10; left: 20px; bottom: 12px; display: flex; align-items: center; gap: 17px; padding: 14px 16px; border: 1px solid #e1e1e5; border-radius: 9px; background: #fff; box-shadow: 0 2px 9px #27272a0a; }
 .map-legend > [data-slot="badge"] { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 0; font-size: var(--dashboard-text-meta); font-weight: 400; color: #62626b; white-space: nowrap; }
 .map-legend strong { color: #505059; font-size: var(--dashboard-text-meta); font-weight: 650; }
 .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: #9a9aa2; }
@@ -181,6 +181,7 @@ button svg { flex-shrink: 0; }
 .status-dot.unavailable { background: var(--unavailable); }
 .status-dot.error { background: var(--error); }
 .map-demo-note { position: absolute; z-index: 10; left: 22px; bottom: 8px; font-size: var(--dashboard-text-caption); color: #4f554d; text-shadow: 0 1px #fff, 1px 0 #fff, -1px 0 #fff, 0 -1px #fff; margin: 0; }
+.olp-map-controls { bottom: 72px; }
 
 .history-dialog { margin: auto; padding: 0; width: 560px; max-height: 84dvh; border: 1px solid #e0e0e5; border-radius: 15px; box-shadow: 0 24px 100px #18181b30; background: white; color: var(--foreground); }
 .history-dialog::backdrop { background: #25252757; backdrop-filter: blur(3px); }

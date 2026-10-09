@@ -46,20 +46,27 @@ function hospitalIcon(hospital: Hospital) {
   label.className = "olp-hospital-label";
   const name = document.createElement("strong");
   name.className = "olp-hospital-name";
-  name.textContent = hospital.shortName || hospital.name;
-  const details = document.createElement("span");
-  details.className = "olp-hospital-details";
-  details.textContent = `${hospital.distance.toFixed(1)} km`;
-  const separator = document.createElement("span");
-  separator.className = "olp-hospital-separator";
-  separator.textContent = "·";
-  const eta = document.createElement("b");
-  eta.textContent = `약 ${hospital.eta}분`;
-  details.append(separator, eta);
+  name.textContent = hospital.name;
+  const meta = document.createElement("span");
+  meta.className = "olp-hospital-meta";
   const status = document.createElement("span");
   status.className = "olp-hospital-status";
   status.textContent = CALL_STATUS[hospital.status].shortLabel;
-  label.append(name, details, status);
+  meta.append(status);
+  if (hospital.status !== "unavailable") {
+    const details = document.createElement("span");
+    details.className = "olp-hospital-details";
+    const eta = document.createElement("b");
+    eta.textContent = `약 ${hospital.eta}분`;
+    const separator = document.createElement("span");
+    separator.className = "olp-hospital-separator";
+    separator.textContent = "·";
+    const distance = document.createElement("span");
+    distance.textContent = `${hospital.distance.toFixed(1)} km`;
+    details.append(eta, separator, distance);
+    meta.append(details);
+  }
+  label.append(name, meta);
   wrapper.append(leader, pin, label);
   return L.divIcon({ html: wrapper, className: "olp-leaflet-marker", iconSize: [34, 34], iconAnchor: [17, 17] });
 }
@@ -80,8 +87,6 @@ function ambulanceIcon(unit: string) {
   wrapper.append(icon, label);
   return L.divIcon({ html: wrapper, className: "olp-leaflet-ambulance", iconSize: [46, 46], iconAnchor: [23, 23] });
 }
-
-type MapBox = { left: number; top: number; right: number; bottom: number };
 
 function mapInsets(map: L.Map) {
   const size = map.getSize();
@@ -104,73 +109,6 @@ function fitHospitalBounds(map: L.Map, markers: Map<string, HospitalMarker>, amb
     maxZoom: 14,
     animate: false,
   });
-}
-
-/** Try only nearby positions so every information card stays associated with its real pin. */
-function arrangeLabels(map: L.Map, markers: Map<string, HospitalMarker>, ambulance: L.Marker | null) {
-  const size = map.getSize();
-  const { detailWidth, clippedLeft } = mapInsets(map);
-  const width = 145;
-  const height = 66;
-  const panelLeft = size.x - detailWidth - 20;
-  const reserved: MapBox[] = [
-    { left: panelLeft, top: 0, right: size.x, bottom: size.y },
-    { left: clippedLeft + 12, top: 12, right: Math.min(clippedLeft + 648, panelLeft - 12), bottom: 146 },
-    { left: clippedLeft + 12, top: size.y - 74, right: clippedLeft + 428, bottom: size.y },
-    { left: clippedLeft + 14, top: size.y - 234, right: clippedLeft + 70, bottom: size.y - 84 },
-  ];
-  const intersectsPoint = (box: MapBox, point: L.Point) => point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom;
-  const isVisible = (point: L.Point) => point.x >= clippedLeft && point.x <= size.x && point.y >= 0 && point.y <= size.y && !reserved.some((box) => intersectsPoint(box, point));
-  const overlap = (a: MapBox, b: MapBox) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-  const pointMarkers = Array.from(markers.values()).map(({ marker }) => map.latLngToContainerPoint(marker.getLatLng())).filter(isVisible);
-  const placed: MapBox[] = [];
-  let ambulanceBox: MapBox | null = null;
-  if (ambulance) {
-    const point = map.latLngToContainerPoint(ambulance.getLatLng());
-    const label = ambulance.getElement()?.querySelector<HTMLElement>(".olp-ambulance-label");
-    if (label) label.style.display = isVisible(point) ? "" : "none";
-    if (isVisible(point)) ambulanceBox = { left: point.x - 64, right: point.x + 64, top: point.y - 28, bottom: point.y + 86 };
-  }
-  for (const { marker } of markers.values()) {
-    const label = marker.getElement()?.querySelector<HTMLElement>(".olp-hospital-label");
-    if (!label) continue;
-    const point = map.latLngToContainerPoint(marker.getLatLng());
-    const leader = marker.getElement()?.querySelector<HTMLElement>(".olp-hospital-leader");
-    label.style.display = isVisible(point) ? "" : "none";
-    if (leader) leader.style.display = isVisible(point) ? "" : "none";
-    if (!isVisible(point)) continue;
-    const horizontal = point.x > panelLeft / 2 ? [-width - 25, 25] : [25, -width - 25];
-    const offsets = [...horizontal, -width / 2].flatMap((x) => [-height / 2, -height - 25, 25, -height - 90, 90].map((y) => ({ x, y })));
-    offsets.push(...[-width - 75, 75].flatMap((x) => [-height / 2, -height - 25, 25].map((y) => ({ x, y }))));
-    let chosen: MapBox | null = null;
-    let bestScore = Infinity;
-    offsets.forEach(({ x, y }, index) => {
-      const box = { left: point.x + x, top: point.y + y, right: point.x + x + width, bottom: point.y + y + height };
-      if (box.left < clippedLeft + 12 || box.right > size.x - 12 || box.top < 12 || box.bottom > size.y - 12 || reserved.some((area) => overlap(box, area) > 0)) return;
-      const cardOverlap = placed.reduce((sum, previous) => sum + overlap(box, previous), 0);
-      const pinOverlap = pointMarkers.reduce((sum, pin) => sum + overlap(box, { left: pin.x - 18, top: pin.y - 18, right: pin.x + 18, bottom: pin.y + 18 }), 0);
-      const distance = Math.hypot(x + width / 2, y + height / 2);
-      const score = cardOverlap * 100 + pinOverlap * 3 + (ambulanceBox ? overlap(box, ambulanceBox) : 0) + distance + index;
-      if (score < bestScore) { chosen = box; bestScore = score; }
-    });
-    if (!chosen) {
-      label.style.display = "none";
-      if (leader) leader.style.display = "none";
-      continue;
-    }
-    const box = chosen as MapBox;
-    placed.push(box);
-    const offsetX = box.left - point.x;
-    const offsetY = box.top - point.y;
-    label.style.left = `${offsetX + 17}px`;
-    label.style.top = `${offsetY + 17}px`;
-    if (leader) {
-      const x = Math.max(offsetX, Math.min(0, offsetX + width));
-      const y = Math.max(offsetY, Math.min(0, offsetY + height));
-      leader.style.width = `${Math.hypot(x, y)}px`;
-      leader.style.transform = `rotate(${Math.atan2(y, x)}rad)`;
-    }
-  }
 }
 
 const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, unit, selectedHospitalId, onSelectHospital }: HospitalMapProps) {
@@ -208,15 +146,10 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
     tiles.on("tileload", onTileLoad);
     tiles.on("load", onTilesComplete);
     tiles.addTo(map);
-    const layout = () => arrangeLabels(map, markersRef.current, ambulanceRef.current);
-    map.on("zoomend moveend resize", layout);
     let frame = 0;
-    let layoutTimer: ReturnType<typeof setTimeout>;
     const container = containerRef.current;
-    const workspace = container.closest(".workspace");
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
-      clearTimeout(layoutTimer);
       frame = requestAnimationFrame(() => {
         const size = map.getSize();
         // Sidebar motion only clips the fixed canvas. A real viewport resize
@@ -224,22 +157,17 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
         if (size.x !== container.clientWidth || size.y !== container.clientHeight) {
           map.invalidateSize({ pan: true, animate: false, debounceMoveend: true });
         }
-        // Reposition labels once the panels settle, without moving the camera.
-        layoutTimer = setTimeout(layout, 100);
       });
     });
     observer.observe(container);
-    if (workspace) observer.observe(workspace);
     const markers = markersRef.current;
     return () => {
       observer.disconnect();
       cancelAnimationFrame(frame);
-      clearTimeout(layoutTimer);
       tiles.off("loading", onLoading);
       tiles.off("tileerror", onTileError);
       tiles.off("tileload", onTileLoad);
       tiles.off("load", onTilesComplete);
-      map.off("zoomend moveend resize", layout);
       map.remove();
       markers.clear();
       ambulanceRef.current = null;
@@ -279,7 +207,8 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       }
       const element = entry.marker.getElement();
       element?.setAttribute("role", "button");
-      element?.setAttribute("aria-label", `${hospital.name}, ${hospital.distance}킬로미터, 예상 ${hospital.eta}분, ${CALL_STATUS[hospital.status].label}. 통화 내용 보기`);
+      const travelDetails = hospital.status === "unavailable" ? "" : `, 예상 ${hospital.eta}분, ${hospital.distance}킬로미터`;
+      element?.setAttribute("aria-label", `${hospital.name}, ${CALL_STATUS[hospital.status].label}${travelDetails}. 통화 내용 보기`);
       element?.setAttribute("aria-pressed", String(hospital.id === selectedHospitalId));
       element?.classList.toggle("olp-marker-selected", hospital.id === selectedHospitalId);
       entry.marker.setZIndexOffset(hospital.id === selectedHospitalId ? 900 : 0);
@@ -296,7 +225,6 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       extentRef.current = extent;
       fitHospitalBounds(map, markersRef.current, ambulanceRef.current);
     }
-    arrangeLabels(map, markersRef.current, ambulanceRef.current);
   }, [hospitals, ambulancePosition, unit, selectedHospitalId]);
 
   return (

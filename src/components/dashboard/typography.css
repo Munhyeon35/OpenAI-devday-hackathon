@@ -68,8 +68,8 @@
 .pp-dialog-actions > p { color: #78818c; }
 .pp-search-hint,
 .pp-selected-conditions { color: #5b677a; }
-.pp-search-conditions summary { font-size: var(--dashboard-text-body); }
-.pp-search-conditions summary span { color: #657183; font-size: var(--dashboard-text-caption); }
+.pp-search-conditions .pp-condition-trigger { font-size: var(--dashboard-text-body); }
+.pp-search-conditions .pp-condition-count { color: #657183; font-size: var(--dashboard-text-caption); }
 .pp-demo-loaded { color: #83491d; }
 
 .reception-sidebar-ui .reception-card[data-sidebar="menu-button"] { font-size: var(--dashboard-text-body); }

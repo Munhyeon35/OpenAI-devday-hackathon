@@ -6,6 +6,7 @@ import type { Patient } from "@/lib/dashboard/types";
 import { hospitalSearchSchema, type HospitalSearch } from "@/lib/hospitals";
 import { PATIENT_PRESETS, type PatientPreset } from "@/lib/dashboard/patient-presets";
 import { PatientSearchFields } from "./patient-search-fields";
+import { PatientTimeField } from "./patient-time-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -173,8 +174,10 @@ export function PatientPanel({ patient, search, initiallyOpen = false, onSave }:
               {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
             </SelectContent>
           </Select>
+        ) : field.type === "time" ? (
+          <PatientTimeField id={fieldId} label={field.label} value={value} onValueChange={(nextValue) => setDraft((current) => ({ ...current, [field.key]: nextValue }))} />
         ) : (
-          <Input id={fieldId} aria-label={field.label} className="pp-control" type={field.type === "time" && value && !/^\d{2}:\d{2}(?::\d{2})?$/.test(value) ? "text" : field.type || "text"} value={value} min={field.min} max={field.max} step={field.type === "number" ? field.step || 1 : undefined} required={field.required} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} />
+          <Input id={fieldId} aria-label={field.label} className="pp-control" type={field.type || "text"} value={value} min={field.min} max={field.max} step={field.type === "number" ? field.step || 1 : undefined} required={field.required} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} />
         )}
       </div>
     );

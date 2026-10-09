@@ -82,9 +82,7 @@ function ambulanceIcon(unit: string) {
   label.className = "olp-ambulance-label";
   const name = document.createElement("strong");
   name.textContent = unit;
-  const description = document.createElement("span");
-  description.textContent = "구급차 현재 위치";
-  label.append(name, description);
+  label.append(name);
   wrapper.append(icon, label);
   return L.divIcon({ html: wrapper, className: "olp-leaflet-ambulance", iconSize: [46, 46], iconAnchor: [23, 23] });
 }

@@ -23,11 +23,10 @@
 .olp-marker-selected .olp-hospital-pin { box-shadow: 0 0 0 5px color-mix(in srgb, var(--marker-color) 18%, transparent), 0 2px 7px #29302224; }
 .olp-leaflet-marker:focus-visible { outline: 3px solid #242824; outline-offset: 4px; border-radius: 50%; }
 .olp-ambulance-marker { width: 46px; height: 46px; position: relative; }
-.olp-ambulance-pin { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; border: 4px solid #fff; background: #ef7926; color: #fff; box-shadow: 0 0 0 12px #f17b2513, 0 0 0 25px #f17b2507, 0 4px 14px #99501e22; }
+.olp-ambulance-pin { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; border: 4px solid #dc2626; background: #fff; color: #dc2626; box-shadow: 0 0 0 12px #dc262613, 0 0 0 25px #dc262607, 0 4px 14px #7f1d1d22; }
 .olp-ambulance-pin svg { width: 25px; height: 25px; }
-.olp-ambulance-label { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; line-height: 1.3; }
-.olp-ambulance-label strong { border: 1px solid #f6cbaa; border-radius: 5px; background: #fff5ec; color: #ca6420; padding: 4px 8px; font-size: var(--dashboard-text-meta); font-weight: 750; }
-.olp-ambulance-label span { font-size: var(--dashboard-text-meta); font-weight: 600; color: #72776e; text-shadow: 0 1px #fff, 1px 0 #fff, -1px 0 #fff, 0 -1px #fff; }
+.olp-ambulance-label { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; line-height: 1.3; }
+.olp-ambulance-label strong { border: 1px solid #e4e4e7; border-radius: 5px; background: #fff; color: #000; padding: 4px 8px; font-size: var(--dashboard-text-meta); font-weight: 750; }
 .olp-map-controls { position: absolute; z-index: 1000; left: calc(20px + var(--map-sidebar-offset, 0px)); bottom: 90px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; transition: left var(--sidebar-motion-duration) var(--sidebar-motion-easing); }
 .olp-map-controls button { display: flex; align-items: center; justify-content: center; border: 0; background: #fff; color: #495149; cursor: pointer; }
 .olp-map-controls button:hover { background: #fff6ef; color: #db6e25; }

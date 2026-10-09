@@ -16,13 +16,14 @@ export const CASE_STATUS_LABELS = { searching: "병원 선정 중", assigned: "�
 
 interface ReceptionSidebarProps {
   cases: EmergencyCase[];
+  mode?: "live" | "demo";
   selectedCaseId: string;
   collapsed: boolean;
   onToggle: () => void;
   onSelect: (id: string) => void;
 }
 
-export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, onSelect }: ReceptionSidebarProps) {
+export function ReceptionSidebar({ mode = "demo", cases, selectedCaseId, collapsed, onToggle, onSelect }: ReceptionSidebarProps) {
   const [query, setQuery] = useState("");
   const [activeOnly, setActiveOnly] = useState(false);
   const activeCount = cases.filter((reception) => reception.status !== "completed").length;
@@ -73,8 +74,8 @@ export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, o
                   aria-pressed={selectedCaseId === reception.id}
                   onClick={() => onSelect(reception.id)}
                 >
-                  <span className="reception-number">접수 <strong>{reception.id}</strong></span>
-                  <Badge variant="outline" className={`case-status ${reception.status}`}><i />{CASE_STATUS_LABELS[reception.status]}</Badge>
+                  <span className="reception-number">접수 <strong>{reception.displayId || reception.id}</strong></span>
+                  <Badge variant="outline" className={`case-status ${reception.status}`}><i />{reception.statusLabel || CASE_STATUS_LABELS[reception.status]}</Badge>
                   <span className="reception-expanded-details" aria-hidden={collapsed} inert={collapsed}>
                     <strong className="reception-unit">{reception.unit}</strong>
                     <span className="reception-patient"><strong>{reception.label}</strong><span>{reception.patient.age}세 · {reception.patient.gender}</span></span>
@@ -89,7 +90,7 @@ export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, o
       </SidebarContent>
       <Collapsible open={!collapsed} className="sidebar-footer-collapse">
         <CollapsibleContent forceMount className="sidebar-reveal" aria-hidden={collapsed} inert={collapsed}>
-          <div className="sidebar-reveal-inner"><SidebarFooter className="sidebar-footer"><span className="demo-dot" />데모 데이터<span>서울특별시</span></SidebarFooter></div>
+          <div className="sidebar-reveal-inner"><SidebarFooter className="sidebar-footer"><span className="demo-dot" />{mode === "live" ? "서버 통화 기록" : "데모 데이터"}<span>{mode === "live" ? "최근 50건" : "서울특별시"}</span></SidebarFooter></div>
         </CollapsibleContent>
       </Collapsible>
     </Sidebar>

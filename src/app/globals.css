@@ -6,6 +6,7 @@
 @import "../components/dashboard/patient-panel.css";
 @import "../components/dashboard/call-panel.css";
 @import "../components/dashboard/reception-sidebar.css";
+@import "../components/dashboard/live-dashboard.css";
 
 @custom-variant dark (&:is(.dark *));
 

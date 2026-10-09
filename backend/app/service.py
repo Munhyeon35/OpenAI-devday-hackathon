@@ -11,6 +11,7 @@ import httpx
 
 from app.models import Decision
 from app.postcall import classify
+from app.events import DispatchEvents
 
 log = logging.getLogger(__name__)
 TERMINAL_CALLS = {"completed", "busy", "failed", "no-answer", "canceled"}
@@ -28,6 +29,8 @@ class DispatchService:
         self.http = httpx.AsyncClient(timeout=10, follow_redirects=False)
         self.worker = None
         self.processing = set()
+        self.events = DispatchEvents()
+        self.store.on_change = self.events.notify
 
     def spawn(self, coroutine):
         task = asyncio.create_task(coroutine)
@@ -94,10 +97,24 @@ class DispatchService:
             self.finish_unknown(job_id, hospital_id, "발신 요청 실패 또는 응답 지연. 발신 상태를 확인하세요.")
 
     def transcript(self, job_id, hospital_id, speaker, text, start_ms=0, end_ms=0):
+        self.transcripts(job_id, hospital_id, [{"speaker": speaker, "text": text,
+                                              "start_ms": start_ms, "end_ms": end_ms}])
+
+    def transcripts(self, job_id, hospital_id, fragments):
         def update(h):
-            h["transcript"].append({"speaker": speaker, "text": text, "start_ms": start_ms, "end_ms": end_ms})
+            sequence = h.get("transcript_sequence", len(h["transcript"]))
+            for fragment in fragments:
+                sequence += 1
+                h["transcript"].append({**fragment, "id": f"{hospital_id}:{sequence}"})
+            h["transcript_sequence"] = sequence
             h["transcript"] = h["transcript"][-2000:]
         self.store.update_hospital(job_id, hospital_id, update)
+
+    def recent(self):
+        return {"dispatches": [self.public(job) for job in self.store.recent()]}
+
+    def changed(self, ids):
+        return {"dispatches": [self.public(job) for jid in ids if (job := self.store.get(jid))]}
 
     def record_decision(self, job_id, hospital_id, payload):
         hospital = self.hospital(job_id, hospital_id)
@@ -193,7 +210,7 @@ class DispatchService:
             else:
                 self.finish_unknown(job_id, hospital_id, f"확답 없이 통화 종료 ({status})")
         elif status in CALL_ORDER and CALL_ORDER[status] >= CALL_ORDER.get(h["call_status"], 0):
-            self.patch(job_id, hospital_id, call_status=status)
+            self.patch(job_id, hospital_id, call_status=status, **({"answered_at": now()} if status == "in-progress" and not h.get("answered_at") else {}))
 
     async def cancel(self, job_id):
         for hospital in self.store.get(job_id)["hospitals"]:

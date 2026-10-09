@@ -14,6 +14,8 @@ import { formatDuration, type Hospital } from "@/lib/dashboard/types";
 
 interface CallPanelProps {
   hospitals: Hospital[];
+  mode?: "live" | "demo";
+  pinned?: boolean;
   selectedHospitalId: string | null;
   onSelectHospital: (id: string | null) => void;
   streamingText: string;
@@ -32,9 +34,11 @@ const PANEL_STATUS: Record<Hospital["status"], string> = {
   available: "수용 가능",
   unavailable: "수용 불가",
   error: "응답 오류",
+  unknown: "수용 미확인",
+  processing: "결과 정리 중",
 };
 
-export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, streamingText, streamingRole, canRetry, onRetry }: CallPanelProps) {
+export function CallPanel({ mode = "demo", pinned = false, hospitals, selectedHospitalId, onSelectHospital, streamingText, streamingRole, canRetry, onRetry }: CallPanelProps) {
   const [filter, setFilter] = useState<"all" | "available" | "calling">("all");
   const [sort, setSort] = useState<"distance" | "eta">("distance");
   const selected = hospitals.find((hospital) => hospital.id === selectedHospitalId);
@@ -59,22 +63,22 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
   useEffect(() => {
     const viewport = scrollRef.current?.querySelector<HTMLDivElement>('[data-slot="scroll-area-viewport"]');
     if (viewport && followRef.current) viewport.scrollTop = viewport.scrollHeight;
-  }, [selectedHospitalId, selected?.messages.length, streamingText]);
+  }, [selectedHospitalId, selected?.messages, streamingText]);
 
   return (
     <Card className="call-panel" role="region" aria-label="병원 전화 현황">
       {selected ? (
         <>
           <div className="conversation-header">
-            <Button type="button" variant="ghost" size="icon" className="conversation-back" aria-label="병원 전화 목록으로 돌아가기" onClick={() => onSelectHospital(null)}><ArrowLeft size={20} /></Button>
+            {!pinned && <Button type="button" variant="ghost" size="icon" className="conversation-back" aria-label="병원 전화 목록으로 돌아가기" onClick={() => onSelectHospital(null)}><ArrowLeft size={20} /></Button>}
             <h2>병원 통화</h2>
             <span className="call-duration"><Clock3 size={14} />{formatDuration(selected.callSeconds)}</span>
           </div>
           <div className="conversation-heading">
-            <div className="conversation-hospital-title"><h3>{selected.name}</h3><Badge variant="secondary" className={`status-badge ${selected.status}`}><StatusIcon status={selected.status} size={12} />{PANEL_STATUS[selected.status]}</Badge></div>
-            <p>{selected.department}<span>·</span>{selected.distance.toFixed(1)} km<span>·</span>예상 {selected.eta}분</p>
+            <div className="conversation-hospital-title"><h3>{selected.name}</h3><Badge variant="secondary" className={`status-badge ${selected.status}`}><StatusIcon status={selected.status} size={12} />{selected.statusLabel || PANEL_STATUS[selected.status]}</Badge></div>
+            <p>{selected.department}<span>·</span>{selected.distanceKnown === false ? "거리 미등록" : `${selected.distance.toFixed(1)} km`}<span>·</span>예상 {selected.eta}분</p>
           </div>
-          {selected.status === "calling" && <div className="conversation-progress"><PhoneCall size={15} /><span>{selected.note}</span></div>}
+          {["calling", "processing"].includes(selected.status) && <div className="conversation-progress"><PhoneCall size={15} /><span>{selected.note}</span></div>}
           <ScrollArea className="conversation-feed" ref={scrollRef} onScrollCapture={(event) => {
             const viewport = event.target;
             if (viewport instanceof HTMLDivElement && viewport.dataset.slot === "scroll-area-viewport") {
@@ -97,11 +101,11 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
                 <span className="stream-caption">대화 표시 중</span>
               </div>
             )}
-            {selected.status !== "calling" && <Alert className={`call-result ${selected.status}`}><StatusIcon status={selected.status} /><AlertDescription>{selected.note}</AlertDescription></Alert>}
+            {!["calling", "processing"].includes(selected.status) && <Alert className={`call-result ${selected.status}`}><StatusIcon status={selected.status} /><AlertDescription>{selected.note}</AlertDescription></Alert>}
             </div>
           </ScrollArea>
           <div className="conversation-footer">
-            {selected.status === "calling" ? <><span className="waveform" aria-hidden="true"><i /><i /><i /><i /><i /></span><span>대화 수신 중</span><Badge variant="outline" className="demo-mini">데모 통화</Badge></> : selected.status === "error" && canRetry ? <Button type="button" variant="ghost" className="retry-button" onClick={() => onRetry(selected.id)}><RefreshCw size={15} />연결 다시 시도<Badge variant="outline" className="demo-mini">데모 통화</Badge></Button> : <><Check size={15} /><span>통화 종료 · 접수 기록에 반영됨</span><Badge variant="outline" className="demo-mini">데모 통화</Badge></>}
+            {["calling", "processing"].includes(selected.status) ? <><span className="waveform" aria-hidden="true"><i /><i /><i /><i /><i /></span><span>{selected.status === "processing" ? "통화 종료 · 결과 정리 중" : "대화 수신 중"}</span><Badge variant="outline" className="demo-mini">{mode === "live" ? "실제 통화" : "모의 통화"}</Badge></> : selected.status === "error" && canRetry ? <Button type="button" variant="ghost" className="retry-button" onClick={() => onRetry(selected.id)}><RefreshCw size={15} />연결 다시 시도<Badge variant="outline" className="demo-mini">{mode === "live" ? "실제 통화" : "모의 통화"}</Badge></Button> : <><Check size={15} /><span>통화 종료 · 접수 기록에 반영됨</span><Badge variant="outline" className="demo-mini">{mode === "live" ? "실제 통화" : "모의 통화"}</Badge></>}
           </div>
         </>
       ) : (
@@ -127,7 +131,7 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
                   <div className="hospital-list-content">
                     {visibleHospitals.map((hospital) => (
                       <Button type="button" variant="ghost" className={`hospital-row ${hospital.status}`} key={hospital.id} onClick={() => { followRef.current = true; onSelectHospital(hospital.id); }}>
-                        <span className="hospital-info"><strong>{hospital.name}</strong><span className="hospital-meta"><span className="hospital-distance">{hospital.distance.toFixed(1)} km</span><Badge variant="secondary" className={`status-badge ${hospital.status}`}><StatusIcon status={hospital.status} size={11} />{PANEL_STATUS[hospital.status]}</Badge></span></span>
+                        <span className="hospital-info"><strong>{hospital.name}</strong><span className="hospital-meta"><span className="hospital-distance">{hospital.distanceKnown === false ? "거리 미등록" : `${hospital.distance.toFixed(1)} km`}</span><Badge variant="secondary" className={`status-badge ${hospital.status}`}><StatusIcon status={hospital.status} size={11} />{hospital.statusLabel || PANEL_STATUS[hospital.status]}</Badge></span></span>
                         <span className="hospital-eta" aria-label={`예상 이송 시간 ${hospital.eta}분`}><strong>{hospital.eta}</strong><span>분</span></span>
                         <ChevronRight size={18} className="hospital-chevron" aria-hidden="true" />
                       </Button>
@@ -138,7 +142,7 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
               </TabsContent>;
             })}
           </Tabs>
-          <div className="call-panel-footnote"><span className={`call-live-dot${liveCount ? " active" : ""}`} /><span><strong>{liveCount}개</strong> 병원과 통화 중</span><Badge variant="outline" className="demo-mini">데모 통화</Badge></div>
+          <div className="call-panel-footnote"><span className={`call-live-dot${liveCount ? " active" : ""}`} /><span><strong>{liveCount}개</strong> 병원과 통화 중</span><Badge variant="outline" className="demo-mini">{mode === "live" ? "실제 통화" : "모의 통화"}</Badge></div>
         </>
       )}
     </Card>

@@ -14,27 +14,32 @@ export type DispatchJob = {
 };
 const clock = (date: string | number) => new Date(date).toLocaleTimeString("ko-KR", { hour12: false });
 
-// Fragments retain exact spacing; speaker timelines are grouped independently,
-// so overlapping or late captions never concatenate hospital and AI speech.
+// Use audio time, not caption arrival order. A pause containing the other
+// speaker's voice starts a new bubble, even within the usual 1.2s merge window.
+// Contiguous chunks can still extend overlapping bubbles without fragmenting
+// both speakers into individual words during a brief overlap.
 export function captionMessages(hospital: DispatchHospital): TranscriptMessage[] {
   const messages: (TranscriptMessage & { start: number; end: number })[] = [];
-  for (const speaker of ["assistant", "hospital"] as const) {
-    let previous: (typeof messages)[number] | undefined;
-    const fragments = hospital.transcript.map((fragment, index) => ({ ...fragment, index }))
-      .filter((fragment) => fragment.speaker === speaker)
-      .sort((a, b) => a.start_ms - b.start_ms || a.index - b.index);
-    for (const fragment of fragments) {
-      if (!previous || fragment.start_ms - previous.end > 1200) {
-        previous = { id: fragment.id || `${hospital.id}:${fragment.index}`, role: speaker === "assistant" ? "ai" : "hospital",
-          text: "", time: `+${Math.floor(fragment.start_ms / 60000).toString().padStart(2,"0")}:${Math.floor(fragment.start_ms / 1000 % 60).toString().padStart(2,"0")}`,
-          start: fragment.start_ms, end: fragment.end_ms };
-        messages.push(previous);
-      }
-      previous.text += fragment.text;
-      previous.end = Math.max(previous.end, fragment.end_ms);
+  const latest: Partial<Record<Fragment["speaker"], (typeof messages)[number]>> = {};
+  const fragments = hospital.transcript.map((fragment, index) => ({ ...fragment, index }))
+    .sort((a, b) => a.start_ms - b.start_ms || a.index - b.index);
+  for (const fragment of fragments) {
+    const speaker = fragment.speaker;
+    let previous = latest[speaker];
+    const other = latest[speaker === "assistant" ? "hospital" : "assistant"];
+    const gap = previous ? fragment.start_ms - previous.end : Infinity;
+    const interrupted = previous && other && gap > 0 && other.end > previous.end;
+    if (!previous || gap > 1200 || interrupted) {
+      previous = { id: fragment.id || `${hospital.id}:${fragment.index}`, role: speaker === "assistant" ? "ai" : "hospital",
+        text: "", time: `+${Math.floor(fragment.start_ms / 60000).toString().padStart(2,"0")}:${Math.floor(fragment.start_ms / 1000 % 60).toString().padStart(2,"0")}`,
+        start: fragment.start_ms, end: fragment.end_ms };
+      messages.push(previous);
+      latest[speaker] = previous;
     }
+    previous.text += fragment.text;
+    previous.end = Math.max(previous.end, fragment.end_ms);
   }
-  return messages.sort((a,b) => a.start - b.start || a.id.localeCompare(b.id));
+  return messages;
 }
 
 export function toReception(job: DispatchJob, now: number): EmergencyCase {
@@ -46,7 +51,7 @@ export function toReception(job: DispatchJob, now: number): EmergencyCase {
   };
   const hospitals: Hospital[] = job.hospitals.map((hospital) => {
     const result = hospital.result;
-    const status = result ? ({ accepted: "available", rejected: "unavailable", unknown: "unknown" } as const)[result.availability]
+    const status = result ? ({ accepted: "available", rejected: "unavailable", unknown: "unavailable" } as const)[result.availability]
       : hospital.phase === "processing" ? "processing" : "calling";
     const note = result?.reason || ({ queued:"발신 대기", dialing:"전화 연결 중", connected:"음성 세션 연결 중", confirming:"환자 정보 전달 · 수용 여부 확인 중", processing:"통화 종료 · 결과 정리 중" }[hospital.phase] || hospital.phase);
     return { id: hospital.id, name: hospital.name, shortName: hospital.name, department: "응급실 수용 확인", position:[0,0],

@@ -1,4 +1,4 @@
-export type CallStatus = "calling" | "unavailable" | "available" | "error" | "unknown" | "processing";
+export type CallStatus = "calling" | "unavailable" | "available" | "error" | "processing";
 export type CaseStatus = "searching" | "assigned" | "completed";
 
 export interface Patient {
@@ -80,7 +80,6 @@ export const CALL_STATUS: Record<CallStatus, { label: string; shortLabel: string
   available: { label: "이송 가능", shortLabel: "이송 가능", color: "#16856b" },
   unavailable: { label: "이송 불가", shortLabel: "이송 불가", color: "#d95960" },
   processing: { label: "결과 정리 중", shortLabel: "결과 정리 중", color: "#77758b" },
-  unknown: { label: "수용 미확인", shortLabel: "미확인", color: "#77758b" },
   error: { label: "API 응답 오류", shortLabel: "응답 오류", color: "#77758b" },
 };
 

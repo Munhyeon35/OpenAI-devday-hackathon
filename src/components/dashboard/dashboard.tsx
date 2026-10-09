@@ -31,7 +31,7 @@ export function DemoDashboard() {
   const selectedCase = cases.find((reception) => reception.id === selectedCaseId)!;
   const selectedHospital = selectedCase.hospitals.find((hospital) => hospital.id === selectedHospitalId);
   const stream = getStream(selectedCase, selectedHospital);
-  const counts = selectedCase.hospitals.reduce((result, hospital) => ({ ...result, [hospital.status]: result[hospital.status] + 1 }), { calling: 0, available: 0, unavailable: 0, error: 0, unknown: 0, processing: 0 });
+  const counts = selectedCase.hospitals.reduce((result, hospital) => ({ ...result, [hospital.status]: result[hospital.status] + 1 }), { calling: 0, available: 0, unavailable: 0, error: 0, processing: 0 });
 
   useEffect(() => {
     if (!saved) return;

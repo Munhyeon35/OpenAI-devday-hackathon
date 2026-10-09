@@ -65,7 +65,7 @@ async def test_single_number_calls_once_and_completes():
     gateway.dial.assert_awaited_once()
     hospital = job["hospitals"][0]
     service.call_status(job["id"], hospital["id"], "no-answer")
-    assert service.hospital(job["id"], hospital["id"])["result"]["availability"] == "unknown"
+    assert service.hospital(job["id"], hospital["id"])["result"]["availability"] == "rejected"
     await service.close()
 
 
@@ -93,7 +93,7 @@ async def test_parallel_calls_idempotency_and_independent_failure():
     await asyncio.gather(*service.tasks)
     a, b = store.get(job["id"])["hospitals"]
     assert set(started) == {"A", "B"}
-    assert a["result"]["availability"] == "unknown"
+    assert a["result"]["availability"] == "rejected"
     assert not a["hangup_pending"]
     assert b["result"] is None and b["call_sid"] == "CAsecond"
     data.patient.name = "다른 환자"
@@ -118,7 +118,7 @@ async def test_decision_requires_evidence_from_correct_hospital_and_confirmation
     service.call_status(job["id"], b["id"], "busy")
     service.call_status(job["id"], b["id"], "ringing")
     assert service.hospital(job["id"], b["id"])["call_status"] == "busy"
-    assert service.hospital(job["id"], b["id"])["result"]["availability"] == "unknown"
+    assert service.hospital(job["id"], b["id"])["result"]["availability"] == "rejected"
     await service.close()
 
 
@@ -138,7 +138,7 @@ async def test_cancel_during_rest_request_hangs_up_late_created_call():
     gate.set()
     await asyncio.gather(*service.tasks)
     for h in service.store.get(job["id"])["hospitals"]:
-        assert h["result"]["availability"] == "unknown"
+        assert h["result"]["availability"] == "rejected"
         assert h["hangup_pending"] and h["call_sid"]
         service.patch(job["id"], h["id"], hangup_after=0)
         await service.maintain_hospital(job, service.hospital(job["id"], h["id"]))
@@ -153,7 +153,7 @@ async def test_webhook_retry_is_durable_and_preserves_result(tmp_path):
     job = service.create(DispatchInput.model_validate(payload()), "key-deliver")
     await asyncio.gather(*service.tasks)
     h = job["hospitals"][0]
-    service.finish_unknown(job["id"], h["id"], "no answer")
+    service.finish_unavailable(job["id"], h["id"], "no answer")
     requests = []
 
     def handler(request):
@@ -169,7 +169,7 @@ async def test_webhook_retry_is_durable_and_preserves_result(tmp_path):
     assert saved["delivery"]["status"] == "delivered"
     assert requests[0].headers["Idempotency-Key"] == requests[1].headers["Idempotency-Key"]
     assert requests[0].headers["Authorization"] == "Bearer receiver-token"
-    assert json.loads(requests[0].content)["result"]["availability"] == "unknown"
+    assert json.loads(requests[0].content)["result"]["availability"] == "rejected"
     await service.close()
     store.close()
     reopened = Store(str(tmp_path / "test.sqlite3"))
@@ -247,7 +247,7 @@ async def test_restart_finalizes_incomplete_job_and_timeout_never_means_rejectio
     store = Store(str(tmp_path / "restart.sqlite3"))
     restarted = DispatchService(Settings(), store, None)
     await restarted.start()
-    assert all(h["result"]["availability"] == "unknown" for h in store.get(job["id"])["hospitals"])
+    assert all(h["result"]["availability"] == "rejected" for h in store.get(job["id"])["hospitals"])
     await restarted.close()
 
 
@@ -264,7 +264,7 @@ async def test_watchdog_and_cancellation_before_dial():
     expired = {**job, "started_at": 0}
     for h in job["hospitals"]:
         await service.maintain_hospital(expired, h)
-    assert all(h["result"]["availability"] == "unknown" for h in service.store.get(job["id"])["hospitals"])
+    assert all(h["result"]["availability"] == "rejected" for h in service.store.get(job["id"])["hospitals"])
     await service.close()
 
 

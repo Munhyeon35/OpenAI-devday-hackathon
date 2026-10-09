@@ -34,5 +34,4 @@
 .dispatch-hospital-fields { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--border); padding-top:14px; }
 .dispatch-hospital-fields strong { font-size:13px; }
 .dispatch-error { color:#b84d53; font-size:12px; line-height:1.7; }
-.call-panel .status-badge.unknown, .call-panel .status-badge.processing { color:#77758b; background:#f1eff6; }
-.call-panel .call-result.unknown { color:#77758b; background:#f5f3f8; }
+.call-panel .status-badge.processing { color:#77758b; background:#f1eff6; }

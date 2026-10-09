@@ -94,7 +94,7 @@ class DispatchService:
             raise
         except Exception as exc:
             log.warning("Dial failed (%s)", type(exc).__name__)
-            self.finish_unknown(job_id, hospital_id, "발신 요청 실패 또는 응답 지연. 발신 상태를 확인하세요.")
+            self.finish_unavailable(job_id, hospital_id, "발신 요청 실패 또는 응답 지연. 발신 상태를 확인하세요.")
 
     def transcript(self, job_id, hospital_id, speaker, text, start_ms=0, end_ms=0):
         self.transcripts(job_id, hospital_id, [{"speaker": speaker, "text": text,
@@ -107,7 +107,8 @@ class DispatchService:
                 sequence += 1
                 h["transcript"].append({**fragment, "id": f"{hospital_id}:{sequence}"})
             h["transcript_sequence"] = sequence
-            h["transcript"] = h["transcript"][-2000:]
+            # Keep the entire bounded-duration call: initial patient context and
+            # earlier conditions can change the meaning of the final short reply.
         self.store.update_hospital(job_id, hospital_id, update)
 
     def recent(self):
@@ -119,9 +120,12 @@ class DispatchService:
     def record_decision(self, job_id, hospital_id, payload):
         hospital = self.hospital(job_id, hospital_id)
         if hospital["result"]:
-            return {"saved": True, "already_final": True, "result": hospital["result"]}
+            result = {**hospital["result"]}
+            if result["availability"] == "unknown":
+                result["availability"] = "rejected"
+            return {"saved": True, "already_final": True, "result": result}
         decision = Decision.model_validate(payload)
-        if decision.availability != "unknown":
+        if decision.evidence_quote:
             # Ground the model's claimed quote in this hospital's input, never AI speech.
             heard = "".join(t["text"] for t in hospital["transcript"] if t["speaker"] == "hospital")
             normalize = lambda s: "".join(s.split())
@@ -142,9 +146,10 @@ class DispatchService:
             h["delivery"]["status"] = "pending" if self.config.backbed_url and live else "local_only"
         self.store.update_hospital(job_id, hospital_id, update)
 
-    def finish_unknown(self, job_id, hospital_id, reason):
+    def finish_unavailable(self, job_id, hospital_id, reason):
+        """No verified acceptance: operationally unavailable, not a claimed refusal."""
         self.complete(job_id, hospital_id, Decision(
-            availability="unknown", reason=reason, evidence_quote="", respondent="",
+            availability="rejected", reason=reason, evidence_quote="", respondent="",
             explicit_confirmation=False, patient_context_confirmed=False,
         ).model_dump())
 
@@ -167,7 +172,7 @@ class DispatchService:
             state = {**h["postcall"], "status": "running", "attempts": h["postcall"]["attempts"] + 1}
             self.patch(job_id, hospital_id, postcall=state)
             if not any(t["speaker"] == "hospital" and t["text"].strip() for t in h["transcript"]):
-                self.finish_unknown(job_id, hospital_id, "통화에서 병원의 답변을 확인하지 못했습니다")
+                self.finish_unavailable(job_id, hospital_id, "통화에서 병원의 답변을 확인하지 못했습니다")
             else:
                 result = await classify(self.http, self.config, self.store.get(job_id), h)
                 self.record_decision(job_id, hospital_id, result)
@@ -183,7 +188,7 @@ class DispatchService:
                 "next_attempt": time.time() + 2 ** state["attempts"],
             })
             if exhausted:
-                self.finish_unknown(job_id, hospital_id, "통화 후 결과 분석 실패. 수용 확답을 확인하지 못했습니다")
+                self.finish_unavailable(job_id, hospital_id, "통화 후 결과 분석 실패. 수용 확답을 확인하지 못했습니다")
         finally:
             self.processing.discard((job_id, hospital_id))
 
@@ -208,14 +213,14 @@ class DispatchService:
                 if not h.get("postcall"):
                     self.end_voice(job_id, hospital_id, ready=False)
             else:
-                self.finish_unknown(job_id, hospital_id, f"확답 없이 통화 종료 ({status})")
+                self.finish_unavailable(job_id, hospital_id, f"확답 없이 통화 종료 ({status})")
         elif status in CALL_ORDER and CALL_ORDER[status] >= CALL_ORDER.get(h["call_status"], 0):
             self.patch(job_id, hospital_id, call_status=status, **({"answered_at": now()} if status == "in-progress" and not h.get("answered_at") else {}))
 
     async def cancel(self, job_id):
         for hospital in self.store.get(job_id)["hospitals"]:
             if not hospital["result"]:
-                self.finish_unknown(job_id, hospital["id"], "사용자가 통화를 중단했습니다")
+                self.finish_unavailable(job_id, hospital["id"], "사용자가 통화를 중단했습니다")
             if self.config.mode == "live" and hospital["call_sid"] and hospital["call_status"] not in TERMINAL_CALLS:
                 self.patch(job_id, hospital["id"], hangup_pending=True, hangup_after=0)
 
@@ -242,12 +247,16 @@ class DispatchService:
     def public(self, job):
         result = json.loads(json.dumps(job))
         for h in result["hospitals"]:
-            for key in ["stream_token", "stream_claimed", "hangup_after"]:
+            if h["result"] and h["result"]["availability"] == "unknown":
+                h["result"]["availability"] = "rejected"  # Legacy uncertain results use the binary policy.
+            for key in ["stream_token", "stream_claimed", "hangup_after", "result_history"]:
                 h.pop(key, None)
         return result
 
     def delivery_payload(self, job, h):
-        result = h["result"]
+        result = {**h["result"]}
+        if result["availability"] == "unknown":
+            result["availability"] = "rejected"
         return {"event": "hospital.availability.resolved", "event_id": result["event_id"],
                 "dispatch_id": job["id"], "hospital_id": h["id"], "mode": job["mode"],
                 "patient": job["patient"], "hospital": {k: h[k] for k in ["name", "phone", "eta_minutes"]},
@@ -272,7 +281,7 @@ class DispatchService:
     async def maintain_hospital(self, job, h):
         jid, hid = job["id"], h["id"]
         if not h["result"] and not h.get("postcall") and time.time() - job["started_at"] > self.config.max_call_seconds + 45:
-            self.finish_unknown(jid, hid, "통화 제한시간 내 수용 확답을 받지 못했습니다")
+            self.finish_unavailable(jid, hid, "통화 제한시간 내 수용 확답을 받지 못했습니다")
             h = self.hospital(jid, hid)
         if self.gateway and h["hangup_pending"] and h["call_sid"] and h["hangup_after"] <= time.time():
             attempts = h["hangup_attempts"] + 1
@@ -309,7 +318,7 @@ class DispatchService:
                         state = self.hospital(job["id"], hospital["id"])["postcall"]
                         self.patch(job["id"], hospital["id"], postcall={**state, "status": "pending"})
                     else:
-                        self.finish_unknown(job["id"], hospital["id"], "서버 재시작으로 통화 세션이 종료되었습니다")
+                        self.finish_unavailable(job["id"], hospital["id"], "서버 재시작으로 통화 세션이 종료되었습니다")
         self.worker = asyncio.create_task(self.maintenance())
 
     async def close(self):
@@ -326,7 +335,7 @@ class DispatchService:
                     if h.get("postcall") or h.get("stream_claimed"):
                         self.end_voice(job["id"], h["id"])
                     else:
-                        self.finish_unknown(job["id"], h["id"], "서버 종료로 통화가 중단되었습니다")
+                        self.finish_unavailable(job["id"], h["id"], "서버 종료로 통화가 중단되었습니다")
                 if self.config.mode == "live" and job["mode"] == "live" and h["call_sid"] and h["call_status"] not in TERMINAL_CALLS:
                     pending.append(self.gateway.hangup(h["call_sid"]))
         if pending:

@@ -34,7 +34,6 @@ const PANEL_STATUS: Record<Hospital["status"], string> = {
   available: "수용 가능",
   unavailable: "수용 불가",
   error: "응답 오류",
-  unknown: "수용 미확인",
   processing: "결과 정리 중",
 };
 
@@ -101,7 +100,7 @@ export function CallPanel({ mode = "demo", pinned = false, hospitals, selectedHo
                 <span className="stream-caption">대화 표시 중</span>
               </div>
             )}
-            {!["calling", "processing"].includes(selected.status) && <Alert className={`call-result ${selected.status}`}><StatusIcon status={selected.status} /><AlertDescription>{selected.note}</AlertDescription></Alert>}
+            {!["calling", "processing"].includes(selected.status) && <Alert className={`call-result ${selected.status}`}><StatusIcon status={selected.status} /><AlertDescription>{PANEL_STATUS[selected.status]}</AlertDescription></Alert>}
             </div>
           </ScrollArea>
           <div className="conversation-footer">

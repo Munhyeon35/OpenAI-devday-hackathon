@@ -26,7 +26,6 @@ const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://tile.openstree
 const TILE_ATTRIBUTION = [process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION, OSM_ATTRIBUTION].filter(Boolean).join(" · ");
 
 const STATUS_GLYPHS: Record<Hospital["status"], string> = {
-  unknown: '<path d="M12 8v5m0 4h.01"/>',
   processing: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   calling: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.79a2 2 0 0 1-.45 2.11L8.09 9.89a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.89.34 1.83.58 2.79.7A2 2 0 0 1 22 16.92Z"/>',
   available: '<path d="m5 12 4 4L19 6"/>',

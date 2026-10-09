@@ -12,6 +12,32 @@ test('overlapping and late fragments keep independent speakers and exact whitesp
   ]});
   assert.deepEqual(messages.map(m=>[m.id,m.role,m.text]),[['a1','ai','예상 십오 분입니다.'],['h1','hospital','네']]);
 });
+test('hospital interruption separates the next AI turn even within 1.2 seconds, including overlapping tails',()=>{
+  const fragments=[
+    {id:'a1',speaker:'assistant',text:'이 환자 지금 출발하면',start_ms:28000,end_ms:28600},
+    {id:'h1',speaker:'hospital',text:'네, ',start_ms:29200,end_ms:29800},
+    {id:'a2',speaker:'assistant',text:'네, 그럼 ',start_ms:29800,end_ms:30000},
+    {id:'h2',speaker:'hospital',text:'됩니다.',start_ms:29800,end_ms:30400},
+    {id:'a3',speaker:'assistant',text:'수용 가능하다는 확답 맞습니까?',start_ms:30000,end_ms:35800},
+  ];
+  const expected=[['a1','ai','이 환자 지금 출발하면'],['h1','hospital','네, 됩니다.'],['a2','ai','네, 그럼 수용 가능하다는 확답 맞습니까?']];
+  const render=(transcript)=>captionMessages({...hospital,transcript}).map(m=>[m.id,m.role,m.text]);
+  assert.deepEqual(render(fragments),expected);
+  // Hospital captions may arrive after the assistant has already resumed.
+  assert.deepEqual(render([fragments[0],fragments[2],fragments[4],fragments[1],fragments[3]]),expected);
+  assert.deepEqual(render(JSON.parse(JSON.stringify(fragments))),expected);
+  // Streaming keeps the resumed answer in its own stable bubble.
+  assert.deepEqual(render(fragments.slice(0,3)).map(m=>m[0]),['a1','h1','a2']);
+});
+test('AI interjection also separates hospital turns; pauses without another speaker still merge',()=>{
+  const messages=captionMessages({...hospital,transcript:[
+    {id:'h1',speaker:'hospital',text:'확인 ',start_ms:0,end_ms:200},
+    {id:'h2',speaker:'hospital',text:'중입니다.',start_ms:400,end_ms:600},
+    {id:'a1',speaker:'assistant',text:'네.',start_ms:700,end_ms:900},
+    {id:'h3',speaker:'hospital',text:'수용 가능합니다.',start_ms:1000,end_ms:1200},
+  ]});
+  assert.deepEqual(messages.map(m=>[m.role,m.text]),[['hospital','확인 중입니다.'],['ai','네.'],['hospital','수용 가능합니다.']]);
+});
 test('parallel hospital snapshots stay separate; partial bubbles retain IDs on updates and reconnect',()=>{
   const a={...hospital,transcript:[{id:'A:1',speaker:'assistant',text:'환자 ',start_ms:0,end_ms:200}]};
   const b={...hospital,id:'B',transcript:[{id:'B:1',speaker:'hospital',text:'확인 중',start_ms:0,end_ms:200}]};
@@ -23,11 +49,11 @@ test('parallel hospital snapshots stay separate; partial bubbles retain IDs on u
   assert.equal(updated.hospitals[1].messages[0].text,'확인 중');
   assert.deepEqual(updated,toReception(JSON.parse(JSON.stringify({...job,hospitals:[a,b]})),Date.parse(job.created_at)));
 });
-test('processing is not a live call or rejection; unknown is never acceptance or transport completion',()=>{
+test('processing is not a live call or rejection; legacy unknown becomes unavailable without implying transport completion',()=>{
   const processing=toReception({...job,hospitals:[{...hospital,phase:'processing',voice_ended_at:'2026-10-09T00:00:10Z'}]},Date.parse('2026-10-09T00:10:00Z'));
   assert.equal(processing.hospitals[0].status,'processing');
   assert.equal(processing.hospitals[0].callSeconds,10);
   const done=toReception({...job,status:'completed',hospitals:[{...hospital,result:{availability:'unknown',reason:'확답 없음'}}]},Date.parse(job.created_at));
-  assert.equal(done.hospitals[0].status,'unknown');
+  assert.equal(done.hospitals[0].status,'unavailable');
   assert.equal(done.statusLabel,'확인 완료');
 });

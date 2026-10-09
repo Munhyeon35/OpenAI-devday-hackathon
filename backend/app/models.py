@@ -43,7 +43,7 @@ class DispatchInput(InputModel):
 
 
 class Decision(InputModel):
-    availability: Literal["accepted", "rejected", "unknown"]
+    availability: Literal["accepted", "rejected"]
     reason: str = Field(min_length=1, max_length=600)
     evidence_quote: str = Field(max_length=600)
     respondent: str = Field(max_length=100)
@@ -52,9 +52,9 @@ class Decision(InputModel):
 
     @model_validator(mode="after")
     def require_confirmation(self):
-        if self.availability != "unknown" and not (
+        if (self.availability == "accepted" or self.explicit_confirmation) and not (
             self.explicit_confirmation and self.patient_context_confirmed
             and self.evidence_quote and self.respondent
         ):
-            raise ValueError("확답, 환자/ETA 확인, 담당자 역할 및 실제 발언 근거가 필요합니다")
+            raise ValueError("확답, 환자/ETA 맥락 확인, 응답자 정보 및 실제 발언 근거가 필요합니다")
         return self

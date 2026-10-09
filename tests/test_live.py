@@ -116,6 +116,9 @@ async def test_barge_in_flushes_queues_drops_old_marks_and_keeps_input_streaming
     old_mark = next(iter(bridge.pending_marks))
     speech = base64.b64encode(bytes([100]) * 960).decode()
     await twilio.incoming.put({"event": "media", "media": {"payload": speech}})
+    await wait_until(lambda: bridge.gate.active)
+    assert not any(e.get("event") == "clear" for e in twilio.sent)
+    await bridge.process_event({"type": "session.input_transcript.delta", "delta": "잠깐요", "start_ms": 0, "end_ms": 120})
     await wait_until(lambda: any(e.get("event") == "clear" for e in twilio.sent))
     assert bridge.output.empty() and not bridge.pending_marks and bridge.gate.active
     count = len(twilio.sent)
@@ -229,3 +232,75 @@ async def test_disconnect_during_greeting_wait_does_not_send_late_greeting():
     assert not any(e.get('event_id')=='opening_greeting' for e in live.sent)
     assert phone.closed
     await service.close()
+
+
+async def test_closing_sentence_audio_is_played_before_end_even_with_silence_marks():
+    import base64
+    from unittest.mock import Mock
+    bridge = LiveBridge(Settings(), Mock(), Socket(), 'job', 'hospital', 'stream')
+    bridge.opening_released = True
+    bridge.live = Socket()
+    player = asyncio.create_task(bridge.play_audio())
+    receiver = asyncio.create_task(bridge.receive_twilio())
+    ending = asyncio.create_task(bridge.finish_conversation())
+    # End may be signalled before the final audio arrives.
+    await bridge.process_event({'type':'session.delegation.created','delegation':{'target':'client'}})
+    voiced = base64.b64encode(bytes([100]) * 800).decode()
+    await bridge.process_event({'type':'session.output_audio.delta','delta':voiced})
+    await wait_until(lambda: bool(bridge.pending_voice_marks))
+    voice_mark=next(iter(bridge.pending_voice_marks))
+    await asyncio.sleep(.85)
+    assert not ending.done()  # Never cut speech whose playback is unconfirmed.
+    await bridge.twilio.incoming.put({'event':'mark','mark':{'name':voice_mark}})
+    bridge.pending_marks.add('continuous-silence')
+    await asyncio.wait_for(ending,1)
+    assert any(e.get('media',{}).get('payload')==voiced for e in bridge.twilio.sent)
+    for task in (player,receiver): task.cancel()
+    await asyncio.gather(player,receiver,return_exceptions=True)
+
+
+async def test_spoken_goodbye_ends_call_even_if_delegation_is_missing():
+    from unittest.mock import Mock
+    bridge = LiveBridge(Settings(),Mock(),Socket(),'job','hospital','stream')
+    await bridge.process_event({'type':'session.output_transcript.delta','delta':'확인 감사합니다. 통화 '})
+    assert not bridge.end_requested.is_set()
+    await bridge.process_event({'type':'session.output_transcript.delta','delta':'마치겠습니다.'})
+    assert bridge.end_requested.is_set()
+
+
+async def test_slow_caption_storage_never_blocks_audio_forwarding():
+    import threading
+    from unittest.mock import Mock
+    entered, release = threading.Event(), threading.Event()
+    def write(*args):
+        entered.set()
+        release.wait(2)
+    service = Mock()
+    service.transcripts = write
+    phone=Socket()
+    bridge=LiveBridge(Settings(),service,phone,'job','hospital','stream')
+    bridge.opening_released=True
+    await bridge.process_event({'type':'session.input_transcript.delta','delta':'네'})
+    writer=asyncio.create_task(bridge.flush_captions())
+    await wait_until(entered.is_set)
+    player=asyncio.create_task(bridge.play_audio())
+    try:
+        await bridge.process_event({'type':'session.output_audio.delta','delta':'/w=='})
+        await wait_until(lambda: bool(phone.sent))
+        assert not writer.done()
+    finally:
+        release.set()
+        await writer
+        player.cancel()
+        await asyncio.gather(player,return_exceptions=True)
+
+
+def test_eta_uses_sino_korean_minute_reading_in_context_and_instructions():
+    from app.speech import korean_minutes
+    expected={1:'일 분',10:'십 분',15:'십오 분',20:'이십 분',21:'이십일 분',60:'육십 분',100:'백 분',115:'백십오 분',360:'삼백육십 분'}
+    for minutes,text in expected.items(): assert korean_minutes(minutes)==text
+    context=payload()
+    context['hospitals'][0]['eta_minutes']=15
+    event=session_start(Settings(),context,context['hospitals'][0])['session']
+    assert '이 통화의 예상 소요시간 발음: 십오 분.' in event['instructions']
+    assert json.loads(event['input'][0]['content'][0]['text'].split(': ',1)[1])['eta_spoken']=='십오 분'

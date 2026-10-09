@@ -9,7 +9,8 @@ from contextlib import suppress
 from starlette.websockets import WebSocketDisconnect
 from websockets.asyncio.client import connect
 
-from app.audio import SpeechGate
+from app.audio import SpeechGate, audible
+from app.speech import korean_minutes
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ Opening policy: 처음에는 서버의 통화 시작 지시까지 듣고 기다�
 인사 도중 상대가 다시 '여보세요'라고 하면 '네, 들립니다. 응급실 환자 수용 확인 전화입니다. 담당자이신가요?'라고 짧게 이어가세요.
 담당자가 아니면 연결을 요청하세요.
 환자 이름·나이·상태·현재 위치·출발 후 예상 소요시간을 간결하고 정확히 전달하세요.
+Pronunciation: 분 단위 시간은 반드시 한자어 수사로 읽으세요. 15분은 십오 분, 10분은 십 분, 20분은 이십 분입니다. 열다섯 분·열 분·스무 분이라고 읽지 마세요. eta_spoken에 적힌 한글 발음을 그대로 사용하세요.
 이 환자를 그 시점에 받을 병상과 진료 여력이 있는지 물으세요. 빈 침대가 있다는 말만으로 수용 확답으로 보지 마세요.
 담당자의 답을 한 문장으로 재확인하세요: '그럼 말씀드린 환자, 출발 후 N분 도착 시 수용 가능하다는 확답 맞습니까?'
 불가 응답도 재확인하세요. 조건부 답변은 조건을 물으세요. 모른다거나 확답을 거절하면 강요하지 마세요.
@@ -38,9 +40,10 @@ Do not delegate to backend when: 정보 전달, 일반 질문, 담당자 연결,
 
 def session_start(config, job, hospital):
     context = {"patient": job["patient"], "hospital": {k: hospital[k] for k in ["name", "eta_minutes"]},
-               "eta_basis": "지금 출발할 경우 예상 소요시간. 출발/이송은 아직 확정되지 않음"}
+               "eta_basis": "지금 출발할 경우 예상 소요시간. 출발/이송은 아직 확정되지 않음",
+               "eta_spoken": korean_minutes(hospital["eta_minutes"])}
     return {"type": "session.start", "session": {
-        "model": config.live_model, "store": False, "instructions": LIVE_INSTRUCTIONS,
+        "model": config.live_model, "store": False, "instructions": LIVE_INSTRUCTIONS + "\n이 통화의 예상 소요시간 발음: " + korean_minutes(hospital["eta_minutes"]) + ".",
         "input": [{"type": "message", "role": "user", "content": [{
             "type": "input_text", "text": "이번 수용 확인 요청의 데이터: " + json.dumps(context, ensure_ascii=False),
         }]}],
@@ -59,6 +62,12 @@ class LiveBridge:
         self.gate = SpeechGate()
         self.epoch = self.sequence = 0
         self.pending_marks = set()
+        self.pending_voice_marks = set()
+        self.last_voice_at = 0.0
+        self.last_input_at = 0.0
+        self.interrupted_turn = False
+        self.closing_text = ""
+        self.captions = asyncio.Queue(maxsize=2000)
         self.playback_changed = asyncio.Event()
         self.end_requested = asyncio.Event()
         self.twilio_lock = asyncio.Lock()
@@ -83,6 +92,7 @@ class LiveBridge:
         async with self.twilio_lock:
             await self.twilio.send_json({"event": "clear", "streamSid": self.stream_sid})
             self.pending_marks.clear()
+            self.pending_voice_marks.clear()
             self.playback_changed.set()
         # GPT-Live hears the same continuous input and handles conversational
         # interruption itself. Repeated 'stop and listen' appends can interrupt
@@ -98,7 +108,7 @@ class LiveBridge:
         if kind == "error":
             raise RuntimeError("GPT-Live rejected a command")
         if kind == "session.output_audio.delta":
-            if self.opening_released and not self.phone_closed and not self.end_requested.is_set():
+            if self.opening_released and not self.phone_closed :
                 audio = base64.b64decode(event["delta"], validate=True)
                 # Preserve provider chunks. Local VAD must never discard a
                 # continuous reply just because background noise looks voiced.
@@ -107,9 +117,23 @@ class LiveBridge:
             if kind == "session.input_transcript.delta" and event["delta"].strip():
                 self.caller_spoke = True
                 self.input_changed.set()
-            self.service.transcript(self.job_id, self.hospital_id,
-                                    "hospital" if kind == "session.input_transcript.delta" else "assistant",
-                                    event["delta"], event.get("start_ms", 0), event.get("end_ms", 0))
+            speaker = "hospital" if kind == "session.input_transcript.delta" else "assistant"
+            self.captions.put_nowait({"speaker": speaker, "text": event["delta"],
+                                     "start_ms": event.get("start_ms", 0), "end_ms": event.get("end_ms", 0)})
+            if speaker == "hospital" and event["delta"].strip():
+                # VAD alone fires on room noise. Clear only when actual speech
+                # is transcribed while the caller is still actively speaking.
+                if self.gate.active and time.monotonic() - self.last_input_at < .3 and not self.interrupted_turn:
+                    self.interrupted_turn = True
+                    self.end_requested.clear()
+                    self.closing_text = ""
+                    if self.pending_marks:
+                        await self.interrupt()
+            elif speaker == "assistant":
+                self.closing_text = (self.closing_text + event["delta"])[-100:]
+                compact = "".join(self.closing_text.split())
+                if "통화마치겠습니다" in compact or "통화를마치겠습니다" in compact:
+                    self.end_requested.set()
         elif kind == "session.delegation.created" and event.get("delegation", {}).get("target") == "client":
             # This application's only delegated capability is ending the call.
             # No inference or external storage is awaited on the audio path.
@@ -124,16 +148,17 @@ class LiveBridge:
                 payload = event["media"]["payload"]
                 # Always forward speech AND silence, including during AI playback.
                 self.audio.put_nowait(payload)
+                self.last_input_at = time.monotonic()
                 was_active = self.gate.active
                 started = self.gate.feed(base64.b64decode(payload, validate=True))
                 if started:
                     self.caller_spoke = True
-                    if self.opening_released and self.pending_marks:
-                        await self.interrupt()
+                    self.interrupted_turn = False
                 if started or was_active != self.gate.active:
                     self.input_changed.set()
             elif event["event"] == "mark":
                 self.pending_marks.discard(event["mark"]["name"])
+                self.pending_voice_marks.discard(event["mark"]["name"])
                 self.playback_changed.set()
             elif event["event"] == "stop":
                 return
@@ -199,18 +224,45 @@ class LiveBridge:
                 self.sequence += 1
                 name = f"{epoch}:{self.sequence}"
                 self.pending_marks.add(name)
+                if audible(audio):
+                    self.last_voice_at = time.monotonic()
+                    self.pending_voice_marks.add(name)
                 await self.twilio.send_json({"event": "media", "streamSid": self.stream_sid,
                                              "media": {"payload": base64.b64encode(audio).decode()}})
                 await self.twilio.send_json({"event": "mark", "streamSid": self.stream_sid, "mark": {"name": name}})
 
+    async def flush_captions(self):
+        fragments = []
+        while not self.captions.empty():
+            fragments.append(self.captions.get_nowait())
+        if fragments:
+            # SQLite fsync must not stall forwarding telephone audio.
+            write = asyncio.create_task(asyncio.to_thread(self.service.transcripts, self.job_id, self.hospital_id, fragments))
+            try:
+                await asyncio.shield(write)
+            except asyncio.CancelledError:
+                await write
+                raise
+
+    async def persist_captions(self):
+        while True:
+            await asyncio.sleep(.08)
+            await self.flush_captions()
+
     async def finish_conversation(self):
-        await self.end_requested.wait()
-        # Only a bounded farewell playback drain; never wait for result processing.
-        with suppress(TimeoutError):
-            async with asyncio.timeout(1):
-                while not self.output.empty() or self.pending_marks:
-                    self.playback_changed.clear()
-                    await self.playback_changed.wait()
+        while True:
+            await self.end_requested.wait()
+            started = time.monotonic()
+            while self.end_requested.is_set():
+                elapsed = time.monotonic() - started
+                # Continuous silence packets never count as unfinished speech.
+                # Allow the closing sentence to arrive AFTER the delegation event.
+                drained = not self.pending_voice_marks and self.output.empty()
+                if elapsed >= .8 and drained and time.monotonic() - self.last_voice_at >= .4:
+                    return
+                if elapsed >= 4:
+                    return  # Bounded fallback when a playback ack is lost.
+                await asyncio.sleep(.04)
 
     async def receive_live(self):
         async for raw in self.live:
@@ -253,7 +305,8 @@ class LiveBridge:
                             raise RuntimeError("GPT-Live session failed to start")
                 opening = asyncio.create_task(self.open_conversation())
                 tasks += [opening, asyncio.create_task(self.send_audio()), asyncio.create_task(self.receive_live()),
-                          asyncio.create_task(self.play_audio()), asyncio.create_task(self.finish_conversation())]
+                          asyncio.create_task(self.play_audio()), asyncio.create_task(self.finish_conversation()),
+                          asyncio.create_task(self.persist_captions())]
                 try:
                     pending = set(tasks)
                     async with asyncio.timeout(self.config.max_call_seconds):
@@ -287,4 +340,5 @@ class LiveBridge:
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            await self.flush_captions()
             self.service.end_voice(self.job_id, self.hospital_id, ready=True)

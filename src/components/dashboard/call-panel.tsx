@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { compareHospitalTravel, formatDuration, hospitalDistanceLabel, type EmergencyCase, type Hospital } from "@/lib/dashboard/types";
 
 interface CallPanelProps {
+  mode?: "live" | "demo" | null;
   hospitals: Hospital[];
   selectedHospitalId: string | null;
   onSelectHospital: (id: string | null) => void;
@@ -38,7 +39,8 @@ const PANEL_STATUS: Record<Hospital["status"], string> = {
   error: "응답 오류",
 };
 
-export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, streamingText, streamingRole, canRetry, onRetry, search, onSearchAgain, onStartCalls }: CallPanelProps) {
+export function CallPanel({ mode = null, hospitals, selectedHospitalId, onSelectHospital, streamingText, streamingRole, canRetry, onRetry, search, onSearchAgain, onStartCalls }: CallPanelProps) {
+  const modeNotice = mode === "live" ? "실제 발신 · 통화 비용 발생" : mode === "demo" ? "모의 통화 · 실제 발신 없음" : "통화 서버 확인 중";
   const [filter, setFilter] = useState<"all" | "available" | "calling">("all");
   const [sort, setSort] = useState<"distance" | "eta">("distance");
   const selected = hospitals.find((hospital) => hospital.id === selectedHospitalId);
@@ -70,7 +72,7 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
         {search.status === "loading" && <p><LoaderCircle size={16} className="animate-spin" />조건에 맞는 병원을 조회하고 있습니다…</p>}
         {search.status === "error" && <><p role="alert">{search.error}</p><Button size="sm" variant="outline" onClick={onSearchAgain}><RefreshCw size={14} />다시 조회</Button></>}
         {search.result && <><p><strong>공공데이터 후보 {hospitals.length}곳</strong><span>수용 미확정</span></p>
-          {hospitals.length > 0 && !pendingCount && <p className="candidate-demo-status">데모 통화 진행·응답 · 실제 발신 없음</p>}
+          {hospitals.length > 0 && !pendingCount && <p className="candidate-demo-status">{modeNotice}</p>}
           {search.result.routing && <p className="candidate-route-source"><a href="https://project-osrm.org/" target="_blank" rel="noopener noreferrer">OSRM</a> · {search.result.routing.status === "unavailable" ? "경로 조회 실패 · 직선거리 표시" : "자동차 경로 · 실시간 교통 미반영"}</p>}
           <details><summary>조회 정보 · 유의사항</summary><p>반경 내 {search.result.totalNearby}곳 · 조건별 후보 {search.result.totalMatched}곳 중 {hospitals.length}곳 표시</p><p>조회 {new Date(search.result.retrievedAt).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul" })} · {search.result.distanceType === "road" ? "도로 거리·예상 시간" : search.result.distanceType === "mixed" ? "도로 거리·일부 직선거리" : "직선거리 · 이동시간 미제공"}</p>{search.result.warnings.map((warning) => <p key={warning}>{warning}</p>)}</details>
           {!hospitals.length && <p>조건에 해당하는 후보가 없습니다. 환자 ‘입력·수정’에서 조건이나 반경을 변경해 주세요.</p>}
@@ -154,7 +156,7 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
           </Tabs>
         </>
       )}
-      {pendingCount > 0 && search?.status === "ready" && <div className="bulk-call-prompt"><div><strong>{pendingCount}곳에 전화할까요?</strong><span>데모 통화 · 실제 발신 없음</span></div><Button type="button" onClick={onStartCalls}><PhoneCall size={16} />일괄 전화 시작</Button></div>}
+      {pendingCount > 0 && search?.status === "ready" && <div className="bulk-call-prompt"><div><strong>{pendingCount}곳에 전화할까요?</strong><span>{modeNotice}</span></div><Button type="button" onClick={onStartCalls}><PhoneCall size={16} />일괄 전화 시작</Button></div>}
     </Card>
   );
 }

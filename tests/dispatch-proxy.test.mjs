@@ -99,3 +99,34 @@ test('asset serving allows only the temporary UI and flow explainer', async () =
   for (const file of ['../.env', '.env', '__proto__', 'constructor'])
     assert.equal((await dispatchAsset(file)).status, 404);
 });
+
+test('SSE forwards initial and later chunks without waiting for stream completion',async()=>{
+  let controller;
+  let upstreamSignal;
+  const source=new ReadableStream({start(c){controller=c;}});
+  const response=await proxyDispatch(request('GET'),'/api/dispatches/events',{env,fetcher:async(url,options)=>{
+    upstreamSignal=options.signal;
+    assert.equal(options.headers.get('authorization'),'Bearer '+env.OPERATOR_TOKEN);
+    assert.equal(options.headers.get('accept'),'text/event-stream');
+    return new Response(source,{headers:{'content-type':'text/event-stream'}});
+  }});
+  assert.equal(response.headers.get('content-type'),'text/event-stream; charset=utf-8');
+  const reader=response.body.getReader();
+  controller.enqueue(new TextEncoder().encode('event: snapshot\ndata: {}\n\n'));
+  assert.match(new TextDecoder().decode((await reader.read()).value),/snapshot/);
+  controller.enqueue(new TextEncoder().encode('event: update\ndata: {}\n\n'));
+  assert.match(new TextDecoder().decode((await reader.read()).value),/update/);
+  assert.equal(upstreamSignal.aborted,false);
+  await reader.cancel();
+});
+
+test('SSE abort propagates to upstream and public clients never get operator access',async()=>{
+  const abort=new AbortController();let signal;
+  const request=new Request('http://localhost:3000/api/dispatches/events',{headers:{host:'localhost:3000'},signal:abort.signal});
+  const response=await proxyDispatch(request,'/api/dispatches/events',{env,fetcher:async(url,options)=>{
+    signal=options.signal; return new Response('event: snapshot\ndata: {}\n\n',{headers:{'content-type':'text/event-stream'}});
+  }});
+  abort.abort();assert.equal(signal.aborted,true);await response.body.cancel();
+  const blocked=await proxyDispatch(new Request('https://public.example/api/dispatches/events'),'/api/dispatches/events',{env,fetcher:()=>{throw Error('must not fetch');}});
+  assert.equal(blocked.status,403);
+});

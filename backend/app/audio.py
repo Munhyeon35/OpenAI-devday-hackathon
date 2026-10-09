@@ -39,3 +39,8 @@ class SpeechGate:
             elif self.active and self.quiet >= 400:
                 self.active = False
         return started
+
+
+def audible(audio):
+    """Distinguish voiced playback from the continuous PCMU silence stream."""
+    return bool(audio) and sum(decode_mulaw(b) ** 2 for b in audio) / len(audio) > 250 ** 2

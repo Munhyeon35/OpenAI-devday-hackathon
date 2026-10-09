@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from twilio.request_validator import RequestValidator
 
@@ -41,7 +41,7 @@ def create_app(config=None, store=None, gateway=None):
     @app.middleware("http")
     async def headers(request, call_next):
         response = await call_next(request)
-        response.headers["Cache-Control"] = "no-store"
+        response.headers.setdefault("Cache-Control", "no-store")
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'"
@@ -61,6 +61,23 @@ def create_app(config=None, store=None, gateway=None):
         if not job:
             raise HTTPException(404, "요청을 찾을 수 없습니다")
         return job
+
+    @app.get("/api/dispatches", dependencies=[Depends(authorized)])
+    async def recent_dispatches():
+        return service.recent()
+
+    @app.get("/api/dispatches/events", dependencies=[Depends(authorized)])
+    async def dispatch_events():
+        return StreamingResponse(service.events.stream(service.recent, service.changed), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"})
+
+    @app.get("/api/dispatches/{job_id}/events", dependencies=[Depends(authorized)])
+    async def one_dispatch_events(job_id: str):
+        get_job(job_id)
+        return StreamingResponse(service.events.stream(lambda: service.public(get_job(job_id)),
+                                         lambda ids: service.public(get_job(job_id)) if job_id in ids else None),
+                                 media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"})
 
     @app.post("/api/dispatches", status_code=202, dependencies=[Depends(authorized)])
     async def create_dispatch(data: DispatchInput, idempotency_key: str = Header(min_length=8, max_length=100)):

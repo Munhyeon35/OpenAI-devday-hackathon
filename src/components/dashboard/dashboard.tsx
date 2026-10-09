@@ -23,7 +23,7 @@ const HospitalMap = dynamic(() => import("./hospital-map"), {
 });
 
 export function Dashboard() {
-  const { cases, getStream, savePatient, retryCall, addCase, searchHospitals, startDemoCalls } = useDemoDashboard();
+  const { cases, mode, getStream, savePatient, retryCall, addCase, searchHospitals, startDemoCalls } = useDemoDashboard();
   const [selectedCaseId, setSelectedCaseId] = useState("008");
   const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -63,11 +63,11 @@ export function Dashboard() {
             else savePatient(selectedCase.id, patient);
             setSaved(true);
           }} />
-          <CallPanel key={`calls-${selectedCase.id}`} canRetry={selectedCase.status !== "completed"} hospitals={selectedCase.hospitals} selectedHospitalId={selectedHospitalId} onSelectHospital={setSelectedHospitalId} streamingText={stream.text} streamingRole={stream.role} onRetry={(hospitalId) => retryCall(selectedCase.id, hospitalId)} search={selectedCase.candidateSearch} onSearchAgain={() => { if (selectedCase.candidateSearch) void searchHospitals(selectedCase.id, selectedCase.patient, selectedCase.candidateSearch.parameters); }} onStartCalls={() => startDemoCalls(selectedCase.id)} />
+          <CallPanel mode={mode} key={`calls-${selectedCase.id}`} canRetry={selectedCase.status !== "completed"} hospitals={selectedCase.hospitals} selectedHospitalId={selectedHospitalId} onSelectHospital={setSelectedHospitalId} streamingText={stream.text} streamingRole={stream.role} onRetry={(hospitalId) => retryCall(selectedCase.id, hospitalId)} search={selectedCase.candidateSearch} onSearchAgain={() => { if (selectedCase.candidateSearch) void searchHospitals(selectedCase.id, selectedCase.patient, selectedCase.candidateSearch.parameters); }} onStartCalls={() => startDemoCalls(selectedCase.id)} />
         </aside>
         <Card className="map-legend" aria-label="병원 상태 범례">{([...(selectedCase.candidateSearch ? ["pending"] : []), "calling", "available", "unavailable", "error"] as CallStatus[]).map((status) => <Badge variant="outline" key={status}><span className={`status-dot ${status}`} /><span>{CALL_STATUS[status].shortLabel}</span><strong>{counts[status]}</strong></Badge>)}</Card>
         {selectedCase.candidateSearch ? (
-          <p className="map-demo-note">병원: 공공데이터 · 수용 미확정 / 도로·직선 구분 표시 / 통화: 데모</p>
+          <p className="map-demo-note">병원: 공공데이터 · 수용 미확정 / 도로·직선 구분 표시 / 통화: {mode === "live" ? "실제 발신" : mode === "demo" ? "모의 통화" : "서버 확인 중"}</p>
         ) : null}
       </main>
       {saved && <Alert className="save-toast" role="status"><Check size={18} /><AlertDescription>환자 정보를 수정했습니다.</AlertDescription></Alert>}

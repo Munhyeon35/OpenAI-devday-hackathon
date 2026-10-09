@@ -106,11 +106,11 @@ Table API를 호출해 계산합니다. 구급차·병원 좌표만 전달하며
 
 ## 데모 범위
 
-환자 4건과 각 접수의 병원 목록, 수용 응답, 대화, 기록은 `src/lib/dashboard/demo-data.ts`의 예시 데이터입니다. 병원 좌표는 대략적인 위치이며, 거리와 예상 이송 시간은 고정값입니다. 실제 도로 경로 계산이나 교통 상황을 반영하지 않습니다. 구급차 위치도 데모 좌표입니다.
+초기 환자 입력 예시 4건과 좌표는 `src/lib/dashboard/demo-data.ts`에서 가져옵니다. 시작할 때 예시 병원·수용 결과·대화는 불러오지 않습니다. 병원 검색 후 공공데이터 후보와 OSRM 도로 ETA를 표시하며 실시간 교통은 반영하지 않습니다.
 
-병렬 통화 진행과 실시간처럼 나타나는 대화는 브라우저에서 시뮬레이션합니다. 새 접수의 병원 후보는 공공데이터 API를 사용하지만, 대시보드 일괄 전화 버튼에 실제 발신·음성 스트리밍 백엔드는 연결되어 있지 않습니다. Pre-KTAS 단계는 입력한 현장 평가값이며 앱이 새로 산정하지 않습니다.
+일괄 전화 버튼은 실제 발신·음성 스트리밍 백엔드에 연결되어 있습니다. `APP_MODE=live`이면 Twilio로 발신하며 `APP_MODE=demo`에서만 백엔드가 모의 통화를 생성합니다. Pre-KTAS 단계는 입력한 현장 평가값이며 앱이 새로 산정하지 않습니다.
 
-환자 수정과 진행 상태는 현재 브라우저 화면의 메모리에만 유지됩니다. 새로고침하면 초기 데이터로 돌아가며 서버나 브라우저 저장소에 영구 저장하지 않습니다.
+환자 입력과 통화 연결 정보는 현재 탭의 sessionStorage에 보관해 새로고침 후 복구합니다. 실제 통화 전사와 수용 결과는 백엔드 SQLite에 저장합니다. 새로고침이나 SSE 재연결만으로 재발신하지 않습니다.
 
 실제 응급실 전화는 `APP_MODE=live`, OpenAI·Twilio 설정 및 **8000번 서버로 연결되는**
 `PUBLIC_BASE_URL`이 필요합니다. 아래 기존 Node 음성 테스트의 `PUBLIC_VOICE_URL`(3001번)과 혼동하지 마세요.
@@ -147,7 +147,7 @@ src/components/providers.tsx          기존 공통 Provider
 src/app/api/health/route.ts            기존 상태 확인 API
 ```
 
-`src/components/dashboard/use-demo-dashboard.ts` 훅이 접수별 환자 상태와 통화 시뮬레이션을 관리합니다. `src/lib/dashboard/types.ts`의 `EmergencyCase`, `Patient`, `Hospital`, `TranscriptMessage`, `ReceptionLog`가 화면 데이터의 공통 계약입니다.
+`src/components/dashboard/use-demo-dashboard.ts`는 기존 컴포넌트 계약을 유지하며 실제 통화 연동 훅으로 동작합니다. `src/lib/dashboard/dispatch-adapter.ts`가 Pre-KTAS 입력과 병원 후보를 발신 요청으로 변환하고, `dispatch-controller.ts`가 병렬 발신·중복 방지·SSE 상태와 채팅을 연결합니다. `src/lib/dashboard/types.ts`의 `EmergencyCase`, `Patient`, `Hospital`, `TranscriptMessage`, `ReceptionLog`가 화면 데이터의 공통 계약입니다.
 
 ## 실제 서비스 연결 지점
 
@@ -345,3 +345,22 @@ Supabase는 도입 예정입니다. 개발·빌드는 현재 Webpack을 사용�
 ## 대시보드 검증
 
 개발 및 빌드는 프로젝트 스크립트에 따라 Webpack을 사용합니다. UI 확인은 1280px 이상 데스크톱에서 접수 전환, 환자 수정, 지도 조작, 병원 대화 선택, 접수 기록을 확인합니다.
+
+
+## 지도 UI와 병렬 통화 연결
+
+기존 지도에서 병원을 선택하면 해당 병원의 실제 전사가 기존 채팅창에 표시됩니다.
+환자 ‘입력·수정’ → 병원 조회 → ‘일괄 전화 시작’ 순서이며, 조회나 지도 클릭만으로 전화하지 않습니다.
+`OPENDATA_API_KEY`는 직접 `.env` 또는 `.env.local`에 입력하고 Next 서버를 재시작하세요.
+기존 키와 `.env`는 병합 과정에서 변경하지 않습니다.
+
+- Pre-KTAS의 입력된 나이·성별·증상·의식·활력징후·병력·현장 평가 및 선택한 진료 조건만 전달합니다. 평가자 이름은 제외하며, 비어 있는 값이나 새 진단·분류를 만들지 않습니다. 현재 입력 폼에 성명이 없어 ‘성명 미제공’으로 전달합니다.
+- 후보의 응급실 번호(없으면 대표번호)와 도로 경로 ETA를 사용합니다. 번호 또는 ETA가 없으면 해당 병원은 발신하지 않고 기존 오류 영역에 사유를 표시합니다.
+- 최대 10곳을 2곳씩 나눠 병렬 요청합니다. 동일 번호는 한 번만 발신합니다. 실제/모의 모드를 전화 버튼 영역에 표시하며, ‘일괄 전화 시작’을 누를 때만 발신합니다.
+- 불확실한 POST 응답은 자동 재시도하지 않습니다. ‘다시 연결’을 직접 누르면 원래 요청 키와 환자 정보를 사용해 동일 요청을 확인합니다.
+- 기존 채팅창에는 병원별 발언 순서와 현재 말풍선, 통화 종료 후 수용 가능/불가가 연결됩니다. 결과 판정 대기 중에는 ‘통화 종료 · 결과 판정 중’으로 표시합니다.
+- 통화 채팅의 구조·디자인은 main 컴포넌트를 유지했습니다. 사용자 승인에 따라 고정된 데모 문구만 실제/모의 통화 모드에 맞게 변경했습니다.
+
+```bash
+node --experimental-strip-types --test tests/dispatch-controller.test.mjs tests/live-dashboard.test.mjs
+```

@@ -6,6 +6,7 @@ type Options = {
 const loopbacks = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const readPath = new RegExp(`^/api/dispatches/${uuid}$`);
+const streamPath = new RegExp(`^/api/dispatches(?:/${uuid})?/events$`);
 const actionPath = new RegExp(`^/api/dispatches/${uuid}/(cancel|retry-delivery)$`);
 const failure = (status: number, detail: string) =>
   Response.json({ detail }, { status, headers: { "Cache-Control": "no-store" } });
@@ -28,7 +29,7 @@ export async function proxyDispatch(request: Request, path: string, options: Opt
   const origin = request.headers.get("origin");
   if ((origin && origin !== browserOrigin.origin) || (request.method === "POST" && origin !== browserOrigin.origin))
     return failure(403, "같은 출처의 요청만 허용됩니다.");
-  if (!(request.method === "GET" && (path === "/api/config" || readPath.test(path))) &&
+  if (!(request.method === "GET" && (path === "/api/config" || path === "/api/dispatches" || readPath.test(path) || streamPath.test(path))) &&
       !(request.method === "POST" && (path === "/api/dispatches" || actionPath.test(path))))
     return failure(404, "지원하지 않는 요청입니다.");
 
@@ -58,10 +59,25 @@ export async function proxyDispatch(request: Request, path: string, options: Opt
     const key = request.headers.get("idempotency-key");
     if (key) headers.set("Idempotency-Key", key);
     // No retries: an uncertain POST response must never create another call.
-    const result = await fetcher(new URL(path, upstream), {
-      method: request.method, headers, body, cache: "no-store", redirect: "error",
-      signal: AbortSignal.timeout(25000),
-    });
+    const streaming = request.method === "GET" && streamPath.test(path);
+    if (streaming) headers.set("Accept", "text/event-stream");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+    let result: Response;
+    try {
+      result = await fetcher(new URL(path, upstream), {
+        method: request.method, headers, body, cache: "no-store", redirect: "error",
+        signal: AbortSignal.any([request.signal, controller.signal]),
+      });
+      if (streaming && result.ok) {
+        if (!result.headers.get("content-type")?.startsWith("text/event-stream"))
+          return failure(502, "백엔드가 실시간 스트림을 반환하지 않았습니다.");
+        return new Response(result.body, { headers: {
+          "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform",
+          "X-Accel-Buffering": "no",
+        } });
+      }
+    } finally { clearTimeout(timeout); }
     const data = await result.json();
     if (path === "/api/config" && result.ok) {
       return Response.json({ mode: data.mode, auth_required: false, backbed_configured: Boolean(data.backbed_configured) },

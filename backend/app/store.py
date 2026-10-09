@@ -12,6 +12,7 @@ class Store:
             Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.lock = threading.RLock()
+        self.on_change = lambda job_id: None
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, request_key TEXT UNIQUE, fingerprint TEXT, body TEXT)")
         self.db.commit()
@@ -19,6 +20,7 @@ class Store:
     def create(self, job, key, fingerprint):
         with self.lock, self.db:
             self.db.execute("INSERT INTO jobs VALUES (?, ?, ?, ?)", (job["id"], key, fingerprint, json.dumps(job)))
+        self.on_change(job["id"])
 
     def get(self, job_id):
         with self.lock:
@@ -41,7 +43,13 @@ class Store:
             change(hospital)
             job["status"] = "completed" if all(h["result"] is not None for h in job["hospitals"]) else "running"
             self.db.execute("UPDATE jobs SET body=? WHERE id=?", (json.dumps(job), job_id))
-            return job
+        self.on_change(job["id"])
+        return job
+
+    def recent(self):
+        with self.lock:
+            rows = self.db.execute("SELECT body FROM jobs ORDER BY rowid DESC LIMIT 50")
+            return [json.loads(row[0]) for row in rows]
 
     def close(self):
         self.db.close()

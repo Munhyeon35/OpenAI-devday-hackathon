@@ -101,3 +101,18 @@
   .pp-dialog-actions { padding-top: 14px; padding-bottom: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .pp-chevron, .pp-icon-button, .pp-field .pp-control { transition: none; } }
+.pp-dialog .pp-search-group { margin-top: 22px; }
+.pp-search-hint, .pp-selected-conditions { margin: 8px 0 12px; color: #687386; font-size: 12px; line-height: 1.6; }
+.pp-search-coordinates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pp-search-coordinates label { display: block; margin-bottom: 7px; font-size: 12px; }
+.pp-search-conditions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; align-items: start; }
+.pp-search-conditions details { border: 1px solid #e4e8ed; border-radius: 8px; padding: 10px 12px; }
+.pp-search-conditions summary { cursor: pointer; font-size: 13px; font-weight: 650; }
+.pp-search-conditions summary span { float: right; color: #788292; font-size: 11px; font-weight: 400; }
+.pp-condition-options { display: grid; gap: 9px; max-height: 210px; overflow-y: auto; margin-top: 12px; }
+.pp-condition-options label, .pp-include-unknown { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.pp-condition-options input, .pp-include-unknown input { accent-color: var(--primary); }
+.pp-demo-loaded { padding: 10px 12px; border-radius: 8px; background: #fff4e9; color: #965726; font-size: 12px; line-height: 1.6; }
+.pp-dialog-actions .pp-load-demo { flex-shrink: 0; }
+.pp-demo-controls { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
+.pp-demo-select { width: 220px; font-size: 13px; }

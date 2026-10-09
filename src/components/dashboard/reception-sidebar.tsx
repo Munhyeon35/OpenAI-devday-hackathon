@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Clock3, PanelLeftClose, Search, X } from "lucide-react";
+import { Clock3, PanelLeftClose, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { EmergencyCase } from "@/lib/dashboard/types";
 
-export const CASE_STATUS_LABELS = { searching: "병원 선정 중", assigned: "이송 중", completed: "이송 완료" };
+export const CASE_STATUS_LABELS = { draft: "입력 중", ready: "전화 전", searching: "병원 선정 중", assigned: "이송 중", completed: "이송 완료" };
 
 interface ReceptionSidebarProps {
   cases: EmergencyCase[];
@@ -20,9 +20,10 @@ interface ReceptionSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onSelect: (id: string) => void;
+  onAdd: () => void;
 }
 
-export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, onSelect }: ReceptionSidebarProps) {
+export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, onSelect, onAdd }: ReceptionSidebarProps) {
   const [query, setQuery] = useState("");
   const [activeOnly, setActiveOnly] = useState(false);
   const activeCount = cases.filter((reception) => reception.status !== "completed").length;
@@ -77,7 +78,7 @@ export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, o
                   <Badge variant="outline" className={`case-status ${reception.status}`}><i />{CASE_STATUS_LABELS[reception.status]}</Badge>
                   <span className="reception-expanded-details" aria-hidden={collapsed} inert={collapsed}>
                     <strong className="reception-unit">{reception.unit}</strong>
-                    <span className="reception-patient"><strong>{reception.label}</strong><span>{reception.patient.age}세 · {reception.patient.gender}</span></span>
+                    <span className="reception-patient"><strong>{reception.label}</strong><span>{reception.patient.age ? `${reception.patient.age}세 · ${reception.patient.gender || "성별 미입력"}` : "환자 정보를 입력해 주세요"}</span></span>
                     <span className="reception-card-bottom"><span><Clock3 size={13} />접수 시각</span><time>{reception.receivedAt}</time></span>
                   </span>
                 </SidebarMenuButton>
@@ -87,6 +88,9 @@ export function ReceptionSidebar({ cases, selectedCaseId, collapsed, onToggle, o
           </SidebarMenu>
         </ScrollArea>
       </SidebarContent>
+      <SidebarFooter className="reception-sidebar-footer">
+        <Tooltip><TooltipTrigger asChild><Button type="button" className="add-patient-button" aria-label="환자 추가" onClick={() => { setQuery(""); onAdd(); }}><Plus size={19} />{!collapsed && <span>환자 추가</span>}</Button></TooltipTrigger><TooltipContent side="right">환자 추가</TooltipContent></Tooltip>
+      </SidebarFooter>
     </Sidebar>
   );
 }

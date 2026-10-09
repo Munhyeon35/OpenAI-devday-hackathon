@@ -1,5 +1,7 @@
-export type CallStatus = "calling" | "unavailable" | "available" | "error";
-export type CaseStatus = "searching" | "assigned" | "completed";
+import type { HospitalCandidate, HospitalSearch, HospitalSearchResult } from "../hospitals";
+
+export type CallStatus = "pending" | "calling" | "unavailable" | "available" | "error";
+export type CaseStatus = "draft" | "ready" | "searching" | "assigned" | "completed";
 
 export interface Patient {
   age: string;
@@ -41,7 +43,8 @@ export interface Hospital {
   department: string;
   position: [number, number];
   distance: number;
-  eta: number;
+  eta: number | null;
+  candidate?: HospitalCandidate;
   status: CallStatus;
   note: string;
   callSeconds: number;
@@ -68,9 +71,17 @@ export interface EmergencyCase {
   patient: Patient;
   hospitals: Hospital[];
   logs: ReceptionLog[];
+  candidateSearch?: {
+    parameters: HospitalSearch;
+    status: "draft" | "loading" | "ready" | "error";
+    requestId?: string;
+    result?: HospitalSearchResult;
+    error?: string;
+  };
 }
 
 export const CALL_STATUS: Record<CallStatus, { label: string; shortLabel: string; color: string }> = {
+  pending: { label: "전화 전", shortLabel: "전화 전", color: "#64748b" },
   calling: { label: "통화 진행 중", shortLabel: "통화 중", color: "#eb791f" },
   available: { label: "이송 가능", shortLabel: "이송 가능", color: "#16856b" },
   unavailable: { label: "이송 불가", shortLabel: "이송 불가", color: "#d95960" },
@@ -80,4 +91,15 @@ export const CALL_STATUS: Record<CallStatus, { label: string; shortLabel: string
 export function formatDuration(seconds: number) {
   seconds = Math.floor(seconds);
   return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+}
+
+export function hospitalDistanceLabel(hospital: Hospital): string {
+  return hospital.candidate ? hospital.candidate.roadRoute ? "도로" : "직선" : "";
+}
+
+export function compareHospitalTravel(first: Hospital, second: Hospital, sort: "distance" | "eta"): number {
+  if (sort === "eta") return (first.eta ?? Infinity) - (second.eta ?? Infinity) || first.distance - second.distance;
+  // A failed route's short straight-line distance must not outrank known road distances.
+  const unknownRoute = (hospital: Hospital) => Number(Boolean(hospital.candidate && !hospital.candidate.roadRoute));
+  return unknownRoute(first) - unknownRoute(second) || first.distance - second.distance || (first.eta ?? Infinity) - (second.eta ?? Infinity) || 0;
 }

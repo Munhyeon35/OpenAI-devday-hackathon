@@ -1,4 +1,8 @@
 /* Keep the shadcn Sidebar, its ScrollArea and keyed menu items mounted. */
+.reception-sidebar-ui .reception-sidebar-footer { flex-shrink: 0; padding: 16px; border-top: 1px solid #eceef2; background: #fff; }
+.reception-sidebar-ui .add-patient-button { width: 100%; height: 44px; gap: 8px; font-weight: 650; }
+.case-status.draft, .case-status.ready { color: #64748b; }
+.case-status.draft i, .case-status.ready i, .status-dot.pending { background: #64748b; }
 .dashboard [data-slot="sidebar-gap"], .dashboard [data-slot="sidebar-container"] {
   transition-duration: var(--sidebar-motion-duration);
   transition-timing-function: var(--sidebar-motion-easing);

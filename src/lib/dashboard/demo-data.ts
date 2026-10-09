@@ -172,12 +172,14 @@ interface HospitalOptions {
 
 function createHospitals({ caseId, patient, statuses, callTime, distances, etas }: HospitalOptions): Hospital[] {
   const notes: Record<CallStatus, string> = {
+    pending: "아직 전화하지 않았습니다.",
     calling: "담당 의료진에게 수용 가능 여부 확인 중",
     available: "응급실 수용 가능 응답",
     unavailable: "현재 수용 가능한 병상 없음",
     error: "통화 API 응답 시간 초과 · 상태 확인 필요",
   };
   const responses: Record<CallStatus, string> = {
+    pending: "",
     calling: "환자 정보 확인했습니다. 담당 의료진에게 수용 가능 여부를 확인하겠습니다.",
     available: "현재 응급실 수용 가능합니다. 도착 예정 시간을 알려주세요.",
     unavailable: "현재 수용 가능한 병상이 없어 해당 환자 이송을 받을 수 없습니다.",

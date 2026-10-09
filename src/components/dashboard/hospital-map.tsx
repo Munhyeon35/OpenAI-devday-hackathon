@@ -2,8 +2,8 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import { LocateFixed, Minus, Plus, RefreshCw, WifiOff } from "lucide-react";
-import { CALL_STATUS, type Hospital } from "@/lib/dashboard/types";
+import { LoaderCircle, LocateFixed, Minus, Plus, RefreshCw, WifiOff } from "lucide-react";
+import { CALL_STATUS, hospitalDistanceLabel, type EmergencyCase, type Hospital } from "@/lib/dashboard/types";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -11,6 +11,7 @@ interface HospitalMapProps {
   hospitals: Hospital[];
   ambulancePosition: [number, number];
   unit: string;
+  searchStatus?: NonNullable<EmergencyCase["candidateSearch"]>["status"];
   selectedHospitalId: string | null;
   onSelectHospital: (id: string) => void;
 }
@@ -26,6 +27,7 @@ const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://tile.openstree
 const TILE_ATTRIBUTION = [process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION, OSM_ATTRIBUTION].filter(Boolean).join(" · ");
 
 const STATUS_GLYPHS: Record<Hospital["status"], string> = {
+  pending: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   calling: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.79a2 2 0 0 1-.45 2.11L8.09 9.89a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.89.34 1.83.58 2.79.7A2 2 0 0 1 22 16.92Z"/>',
   available: '<path d="m5 12 4 4L19 6"/>',
   unavailable: '<path d="m6 6 12 12M18 6 6 18"/>',
@@ -58,12 +60,12 @@ function hospitalIcon(hospital: Hospital) {
     const details = document.createElement("span");
     details.className = "olp-hospital-details";
     const eta = document.createElement("b");
-    eta.textContent = `약 ${hospital.eta}분`;
+    eta.textContent = hospital.eta === null ? "시간 미확인" : `약 ${hospital.eta}분`;
     const separator = document.createElement("span");
     separator.className = "olp-hospital-separator";
     separator.textContent = "·";
     const distance = document.createElement("span");
-    distance.textContent = `${hospital.distance.toFixed(1)} km`;
+    distance.textContent = `${hospitalDistanceLabel(hospital)} ${hospital.distance.toFixed(1)} km`.trim();
     details.append(eta, separator, distance);
     meta.append(details);
   }
@@ -97,20 +99,23 @@ function mapInsets(map: L.Map) {
   return { left: clippedLeft + Math.min(75, (size.x - clippedLeft) * 0.075), right: detailWidth + 40, top: Math.min(170, size.y * 0.27), bottom: Math.min(100, size.y * 0.16), detailWidth, clippedLeft };
 }
 
-function fitHospitalBounds(map: L.Map, markers: Map<string, HospitalMarker>, ambulance: L.Marker | null) {
+function fitHospitalBounds(map: L.Map, markers: Map<string, HospitalMarker>, ambulance: L.Marker | null, initial: boolean) {
   const points = Array.from(markers.values()).map(({ marker }) => marker.getLatLng());
   if (ambulance) points.push(ambulance.getLatLng());
   if (!points.length) return;
   const insets = mapInsets(map);
-  map.fitBounds(L.latLngBounds(points), {
+  map.flyToBounds(L.latLngBounds(points), {
     paddingTopLeft: [insets.left, insets.top],
     paddingBottomRight: [insets.right, insets.bottom],
-    maxZoom: 14,
-    animate: false,
+    // Empty results should not zoom into the ambulance. Later searches may
+    // zoom out to include new candidates, but retain the operator's wider view.
+    maxZoom: initial ? 14 : map.getZoom(),
+    animate: !initial && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    duration: 0.85,
   });
 }
 
-const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, unit, selectedHospitalId, onSelectHospital }: HospitalMapProps) {
+const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, unit, searchStatus, selectedHospitalId, onSelectHospital }: HospitalMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tilesRef = useRef<L.TileLayer | null>(null);
@@ -181,7 +186,7 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
     const map = mapRef.current;
     if (!map) return;
     // Call timers and streamed messages update frequently but do not change the map.
-    const dataFingerprint = JSON.stringify([unit, ambulancePosition, selectedHospitalId, hospitals.map(({ id, name, shortName, distance, eta, status, position }) => [id, name, shortName, distance, eta, status, position])]);
+    const dataFingerprint = JSON.stringify([unit, ambulancePosition, selectedHospitalId, hospitals.map((hospital) => [hospital.id, hospital.name, hospital.shortName, hospital.distance, hospital.eta, hospital.status, hospital.position, hospitalDistanceLabel(hospital)])]);
     if (dataFingerprint === dataFingerprintRef.current) return;
     dataFingerprintRef.current = dataFingerprint;
     const activeIds = new Set(hospitals.map((hospital) => hospital.id));
@@ -189,7 +194,7 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       if (!activeIds.has(id)) { entry.marker.remove(); markersRef.current.delete(id); }
     }
     for (const hospital of hospitals) {
-      const fingerprint = JSON.stringify([hospital.name, hospital.shortName, hospital.distance, hospital.eta, hospital.status, hospital.position]);
+      const fingerprint = JSON.stringify([hospital.name, hospital.shortName, hospital.distance, hospital.eta, hospital.status, hospital.position, hospitalDistanceLabel(hospital)]);
       let entry = markersRef.current.get(hospital.id);
       if (!entry) {
         const marker = L.marker(hospital.position, { icon: hospitalIcon(hospital), keyboard: true, title: hospital.name, riseOnHover: true });
@@ -206,7 +211,7 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       }
       const element = entry.marker.getElement();
       element?.setAttribute("role", "button");
-      const travelDetails = hospital.status === "unavailable" ? "" : `, 예상 ${hospital.eta}분, ${hospital.distance}킬로미터`;
+      const travelDetails = hospital.status === "unavailable" ? "" : `, ${hospital.eta === null ? "시간 미확인," : `예상 ${hospital.eta}분,`} ${hospitalDistanceLabel(hospital)} ${hospital.distance.toFixed(1)}킬로미터`;
       element?.setAttribute("aria-label", `${hospital.name}, ${CALL_STATUS[hospital.status].label}${travelDetails}. 통화 내용 보기`);
       element?.setAttribute("aria-pressed", String(hospital.id === selectedHospitalId));
       element?.classList.toggle("olp-marker-selected", hospital.id === selectedHospitalId);
@@ -219,16 +224,28 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       const label = ambulanceRef.current.getElement()?.querySelector(".olp-ambulance-label strong");
       if (label) label.textContent = unit;
     }
-    const extent = JSON.stringify([ambulancePosition, hospitals.map(({ id, position }) => [id, position])]);
-    if (extent !== extentRef.current) {
-      extentRef.current = extent;
-      fitHospitalBounds(map, markersRef.current, ambulanceRef.current);
-    }
   }, [hospitals, ambulancePosition, unit, selectedHospitalId]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    // A search clears the markers while fetching. Keep the camera and last
+    // completed extent so a retry with identical results preserves user zoom.
+    if (!map || (searchStatus && searchStatus !== "ready")) return;
+    const extent = JSON.stringify([ambulancePosition, hospitals.map(({ id, position }) => ({ id, position })).sort((first, second) => first.id.localeCompare(second.id))]);
+    if (extent !== extentRef.current) {
+      const initial = !extentRef.current && !searchStatus;
+      extentRef.current = extent;
+      fitHospitalBounds(map, markersRef.current, ambulanceRef.current, initial);
+    }
+  }, [hospitals, ambulancePosition, searchStatus]);
 
   return (
     <div className="olp-map-shell">
       <div ref={containerRef} className="olp-map-canvas" aria-label="구급차와 병원 위치 지도. 화살표 키로 이동하고 더하기와 빼기 키로 확대 및 축소할 수 있습니다." />
+      {searchStatus === "loading" && <div className="olp-map-search" role="status" aria-live="polite" aria-atomic="true">
+        <span className="olp-map-search-icon"><LoaderCircle size={25} aria-hidden="true" /></span>
+        <div><strong>조건에 맞는 병원을 찾고 있어요</strong><p>병원 정보와 이동 경로를 확인하고 있습니다.</p></div>
+      </div>}
       <div className="olp-map-controls" aria-label="지도 조작">
         <Button variant="outline" size="icon" className="olp-map-locate" type="button" title="구급차 위치로 이동" aria-label="구급차 위치로 이동" onClick={() => {
           const map = mapRef.current;
@@ -243,7 +260,7 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
           <Button variant="ghost" size="icon" type="button" title="지도 축소" aria-label="지도 축소" onClick={() => mapRef.current?.zoomOut()}><Minus size={20} /></Button>
         </div>
       </div>
-      {tileError && <Alert className="olp-map-error"><WifiOff size={19} /><div><AlertTitle>지도를 불러오지 못했습니다</AlertTitle><AlertDescription>네트워크 연결을 확인한 후 다시 시도해 주세요.</AlertDescription></div><Button variant="outline" size="sm" type="button" onClick={() => { setTileError(false); tilesRef.current?.redraw(); }}><RefreshCw size={14} />다시 시도</Button></Alert>}
+      {tileError && searchStatus !== "loading" && <Alert className="olp-map-error"><WifiOff size={19} /><div><AlertTitle>지도를 불러오지 못했습니다</AlertTitle><AlertDescription>네트워크 연결을 확인한 후 다시 시도해 주세요.</AlertDescription></div><Button variant="outline" size="sm" type="button" onClick={() => { setTileError(false); tilesRef.current?.redraw(); }}><RefreshCw size={14} />다시 시도</Button></Alert>}
     </div>
   );
 });

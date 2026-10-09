@@ -40,3 +40,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# BedLink hospital dispatch
+.venv/
+__pycache__/
+.pytest_cache/
+data/
+*.pyc

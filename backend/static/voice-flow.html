@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>전화 속 데이터의 여정 · BedLink</title>
+  <link rel="stylesheet" href="voice-flow.css">
+  <script src="voice-flow.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><a href="/" class="brand">✚ BedLink <span>/ VOICE EXPLAINER</span></a><span class="demo-label">설명용 애니메이션 · 실제 발신 없음</span></header>
+    <section class="intro"><div><p class="eyebrow">FOLLOW THE VOICE</p><h1>전화 속 한마디는<br>어디로 갈까요?</h1></div><p class="lead">내 목소리가 GPT에 도착하고,<br>AI의 질문이 다시 전화로 들리기까지.<br><strong>움직이는 점을 따라 흐름을 확인하세요.</strong></p></section>
+    <section class="visual" aria-label="전화 음성 데이터 흐름">
+      <div class="visual-top"><span id="step-count">01 / 09</span><span id="phase-label">연결 준비</span><div class="legend"><span class="human-key">● 내 음성</span><span class="ai-key">● AI 음성</span><span class="data-key">● 요청 · 결과</span></div></div>
+      <div class="diagram-scroll">
+        <svg id="diagram" viewBox="0 0 1120 370" role="img" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">내 전화, Twilio, 내 서버, GPT API 사이의 데이터 이동</title>
+          <desc id="diagram-desc">내 음성은 전화에서 Twilio와 내 서버를 거쳐 GPT로 전달됩니다. AI 음성은 역방향으로 돌아옵니다.</desc>
+          <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".7" fill="#ffffff" opacity=".10"/></pattern><filter id="glow"><feGaussianBlur stdDeviation="4"/></filter></defs>
+          <rect width="1120" height="370" fill="url(#grid)"/>
+          <g class="rails"><path d="M120 94 H1000"/><path d="M120 305 H1000"/></g>
+          <g class="direction-labels"><text x="239" y="138">전화망</text><text x="534" y="112">공개 HTTPS / WSS 터널</text><text x="849" y="138">보안 WebSocket</text><text x="534" y="130" class="tiny">Twilio가 내 서버에 접속하는 입구</text></g>
+          <g class="node" id="node-0" transform="translate(44 147)"><rect width="152" height="100" rx="19"/><text x="76" y="36" class="node-name">내 전화</text><text x="76" y="61" class="node-sub">응급실 담당자 역할</text><text x="76" y="82" class="node-code">말하기 / 듣기</text></g>
+          <g class="node" id="node-1" transform="translate(279 147)"><rect width="152" height="100" rx="19"/><text x="76" y="36" class="node-name">Twilio</text><text x="76" y="61" class="node-sub">전화를 걸고 음성을 중계</text><text x="76" y="82" class="node-code">전화망 ↔ Media Streams</text></g>
+          <g class="node" id="node-2" transform="translate(574 147)"><rect width="172" height="100" rx="19"/><text x="86" y="36" class="node-name">내 서버</text><text x="86" y="61" class="node-sub">음성 전달 · 결과 저장</text><text x="86" y="82" class="node-code">localhost:8000</text></g>
+          <g class="node" id="node-3" transform="translate(914 147)"><rect width="172" height="100" rx="19"/><text x="86" y="36" class="node-name">GPT API</text><text x="86" y="61" class="node-sub">듣기 · 이해하기 · 말하기</text><text x="86" y="82" class="node-code">GPT-Live + 결과 해석 모델</text></g>
+          <g class="under-labels"><text x="120" y="278">내가 말하는 원래 음성</text><text x="355" y="278">전화 음성을 데이터로</text><text x="660" y="278">두 연결 사이의 다리</text><text x="1000" y="278">음성을 받아 음성으로 응답</text></g>
+          <g id="packet" class="packet data"><circle r="14" class="halo" filter="url(#glow)"/><circle r="7"/><path id="packet-arrow" d="M-3 -3 L3 0 L-3 3"/><rect x="-70" y="-43" width="140" height="26" rx="13"/><text id="packet-label" y="-26">발신 요청</text></g>
+          <g class="bottom-note"><text x="560" y="334">음성은 짧은 조각으로 계속 흐릅니다. 점은 그 흐름을 단순화한 표현입니다.</text></g>
+        </svg>
+      </div>
+      <div class="playback"><button id="play" class="play" type="button">▶ 재생</button><button id="prev" class="nav" type="button" aria-label="이전 단계">←</button><button id="next" class="nav" type="button" aria-label="다음 단계">→</button><div class="progress-track"><div id="progress"></div></div><label class="speed-label" for="speed">속도 <select id="speed"><option value="0.65">느리게</option><option value="1" selected>보통</option><option value="1.6">빠르게</option></select></label><button id="reset" class="reset" type="button">처음부터 ↺</button></div>
+    </section>
+    <nav id="steps" class="steps" aria-label="통화 단계 선택"></nav>
+    <section class="detail-grid" aria-live="polite" aria-atomic="true">
+      <article class="conversation"><div class="card-label"><span id="speaker-dot" class="speaker-dot data"></span><span id="speaker">내 서버</span><span id="kind">발신 요청</span></div><h2 id="quote">입력한 번호로 전화를 걸어주세요.</h2><p id="explanation"></p><div id="route" class="route"></div></article>
+      <article class="behind"><p class="eyebrow">BEHIND THE CALL</p><h2 id="technical-title"></h2><p id="technical-body"></p><code id="event"></code><div id="saved" class="saved" hidden><span>✓ 수용 가능</span><code>availability: "accepted"</code><small>가상 대화의 확답을 바탕으로 내 서버에 저장</small></div></article>
+    </section>
+    <section class="takeaways"><div><span>01</span><h3>내 음성도 서버를 지나요?</h3><p>네. Twilio가 받은 음성 조각을 내 서버가 GPT-Live로 전달합니다. GPT의 음성 답변도 같은 경로를 거꾸로 지나갑니다.</p></div><div><span>02</span><h3>공개 주소는 어디에 쓰나요?</h3><p>외부의 Twilio가 내 서버로 접속할 때 씁니다. 지금은 터널이 공개 주소와 내 컴퓨터의 8000번 포트를 연결합니다.</p></div><div><span>03</span><h3>두 병원에 동시에 전화하면?</h3><p>이 흐름이 병원마다 하나씩 생깁니다. 통화와 GPT-Live 세션을 따로 연결해서 대화와 수용 결과가 섞이지 않게 합니다.</p></div></section>
+    <footer><span>BedLink / HOW IT WORKS</span><span>예시 환자 · 42세 · 다리 부상 · 도착 예정 15분</span></footer>
+  </main>
+</body>
+</html>

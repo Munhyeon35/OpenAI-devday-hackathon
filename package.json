@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "voice:dev": "node --env-file=.env server/voice.mjs"
+    "voice:dev": "node --env-file=.env server/voice.mjs",
+    "dispatch:dev": "python3 -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --no-access-log",
+    "test:dispatch-proxy": "node --experimental-strip-types --test tests/dispatch-proxy.test.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",

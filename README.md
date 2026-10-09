@@ -3,6 +3,43 @@
 Twilio + OpenAI Realtime으로 한국어 음성 대화를 실험하는 프로젝트입니다.
 Vapi 없이 동작합니다. 브라우저 대화와 실제 전화는 서로 다른 실행 경로입니다.
 
+응급실 수용 확인 기능이 추가되었습니다. 기존 Realtime 음성 테스트는 유지하며,
+환자 정보·병원 두 곳·ETA를 받아 GPT-Live로 수용 확답을 수집하는 별도 백엔드를 함께 제공합니다.
+[기능 비교 및 병합 범위](docs/feature-comparison.md) · [응급실 API 상세](docs/hospital-dispatch.md)
+
+## 추가: 응급실 두 곳 수용 확인
+
+Python 3.11+가 필요합니다. 기존 `.env`를 유지하고 `.env.example`의 BedLink 항목만 추가하세요.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+# 터미널 1: APP_MODE=demo는 실제 전화 없이 통합 흐름을 확인합니다.
+APP_MODE=demo npm run dispatch:dev
+# 터미널 2
+npm run dev
+```
+
+`http://localhost:3000`의 **응급실 수용 확인** 링크 또는 `http://localhost:3000/dispatch`에서 사용합니다.
+Next.js가 `DISPATCH_BACKEND_URL`(기본 `http://127.0.0.1:8000`)로 요청을 전달하고,
+`OPERATOR_TOKEN`은 서버에서만 읽습니다. 두 서버는 같은 토큰을 사용해야 합니다.
+Next.js 프록시는 localhost / 동일 출처 전용이며, 외부 사용자는 운영자 토큰으로 보호된
+FastAPI API를 직접 사용합니다. 임시 화면은 `http://127.0.0.1:8000/`에서도 사용할 수 있습니다.
+
+실제 응급실 전화는 `APP_MODE=live`, OpenAI·Twilio 설정 및 **8000번 서버로 연결되는**
+`PUBLIC_BASE_URL`이 필요합니다. 아래 기존 Node 음성 테스트의 `PUBLIC_VOICE_URL`(3001번)과 혼동하지 마세요.
+두 기능의 시나리오와 오디오 API는 별도입니다. 테스트를 위해 API에 병원 한 곳만 보내는 것도 지원합니다.
+외부 결과 수신 서버가 있으면 `GPT_BACKBED_URL`과 선택적 `GPT_BACKBED_TOKEN`을 설정합니다.
+
+```bash
+pytest -q
+npm run test:dispatch-proxy
+```
+
+프록시 테스트는 Node 22.6+ 또는 24+에서 실행합니다. 앱의 기존 Node 22+ 실행 조건은 유지됩니다.
+키·토큰·로컬 DB는 커밋하지 않습니다.
+
 ## 처음 받은 사람이 할 일
 
 Node.js **22 이상**과 npm을 준비하세요(`--env-file` 사용).

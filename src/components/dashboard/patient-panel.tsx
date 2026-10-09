@@ -1,8 +1,11 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent } from "react";
-import { Activity, ChevronDown, ClipboardList, Pencil, UserRound, X } from "lucide-react";
+import { Activity, ChevronDown, ClipboardList, Download, Pencil, UserRound, X } from "lucide-react";
 import type { Patient } from "@/lib/dashboard/types";
+import { hospitalSearchSchema, type HospitalSearch } from "@/lib/hospitals";
+import { PATIENT_PRESETS, type PatientPreset } from "@/lib/dashboard/patient-presets";
+import { PatientSearchFields } from "./patient-search-fields";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +21,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 type PatientPanelProps = {
   patient: Patient;
-  onSave: (patient: Patient) => void;
+  search?: HospitalSearch;
+  initiallyOpen?: boolean;
+  onSave: (patient: Patient, search?: HospitalSearch) => void;
 };
 
 type PatientField = {
@@ -86,23 +91,36 @@ function valueOrDash(value: string) {
   return value.trim() || "—";
 }
 
-export function PatientPanel({ patient, onSave }: PatientPanelProps) {
+export function PatientPanel({ patient, search, initiallyOpen = false, onSave }: PatientPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState(patient);
   const [validationError, setValidationError] = useState("");
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(initiallyOpen);
+  const [searchDraft, setSearchDraft] = useState(search);
+  const [selectedDemoId, setSelectedDemoId] = useState(PATIENT_PRESETS[0].id);
+  const [demoLoaded, setDemoLoaded] = useState<PatientPreset | null>(null);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const id = useId();
   const stage = patient.ktas.trim().replace(/단계$/, "");
 
   function openEditor() {
     setDraft({ ...patient });
+    setSearchDraft(search);
+    setDemoLoaded(null);
     setValidationError("");
     setEditorOpen(true);
   }
 
   function closeEditor() {
     setEditorOpen(false);
+  }
+
+  function loadDemo() {
+    const preset = PATIENT_PRESETS.find((entry) => entry.id === selectedDemoId)!;
+    setDraft({ ...preset.patient });
+    if (search) setSearchDraft(structuredClone(preset.search));
+    setValidationError("");
+    setDemoLoaded(preset);
   }
 
   function savePatient(event: FormEvent<HTMLFormElement>) {
@@ -129,7 +147,11 @@ export function PatientPanel({ patient, onSave }: PatientPanelProps) {
         }
       }
     }
-    onSave(updated);
+    if (searchDraft && !hospitalSearchSchema.safeParse(searchDraft).success) {
+      setValidationError("구급차 좌표와 검색 조건을 확인해 주세요. 반경은 1–100km입니다.");
+      return;
+    }
+    onSave(updated, searchDraft);
     closeEditor();
   }
 
@@ -144,7 +166,7 @@ export function PatientPanel({ patient, onSave }: PatientPanelProps) {
           <Textarea id={fieldId} aria-label={field.label} className="pp-control" value={value} rows={2} onChange={(event) => setDraft((current) => ({ ...current, [field.key]: event.target.value }))} />
         ) : field.type === "select" ? (
           <Select value={value || "__unselected"} onValueChange={(nextValue) => setDraft((current) => ({ ...current, [field.key]: nextValue === "__unselected" ? "" : nextValue }))}>
-            <SelectTrigger id={fieldId} aria-label={field.label} className="pp-control pp-select-trigger"><SelectValue placeholder="선택해 주세요" /></SelectTrigger>
+            <SelectTrigger id={fieldId} aria-label={field.label} className="pp-control pp-select-trigger"><SelectValue placeholder="선택해 주세요">{options.find((option) => option.value === value)?.label || value || "선택해 주세요"}</SelectValue></SelectTrigger>
             <SelectContent className="pp-select-content" position="popper">
               <SelectItem value="__unselected">선택해 주세요</SelectItem>
               {value && !options.some((option) => option.value === value) && <SelectItem value={value}>{value}</SelectItem>}
@@ -217,11 +239,12 @@ export function PatientPanel({ patient, onSave }: PatientPanelProps) {
       <DialogContent className="pp-dialog" showCloseButton={false} onCloseAutoFocus={(event) => { event.preventDefault(); editButtonRef.current?.focus(); }}>
         <form className="pp-edit-form" onSubmit={savePatient}>
           <header className="pp-dialog-header">
-            <div><DialogTitle>Pre-KTAS 환자 평가</DialogTitle><DialogDescription>환자의 기본정보와 현장 평가 내용을 입력해 주세요.</DialogDescription></div>
+            <div><DialogTitle>Pre-KTAS 환자 평가</DialogTitle><DialogDescription>{search ? "환자 정보와 진료 조건을 입력하면 주변 병원 후보를 조회합니다." : "환자의 기본정보와 현장 평가 내용을 입력해 주세요."}</DialogDescription></div>
             <DialogClose asChild><Button type="button" variant="ghost" className="pp-icon-button" aria-label="환자 정보 수정 닫기"><X size={20} /></Button></DialogClose>
           </header>
           <ScrollArea className="pp-form-body"><div className="pp-form-body-content">
             <p className="pp-form-hint"><span>*</span> 필수 입력 항목</p>
+            {demoLoaded && <p className="pp-demo-loaded" role="status">{demoLoaded.label} 데모를 불러왔습니다. {demoLoaded.patient.age}세 {demoLoaded.patient.gender}{search && ` · ${demoLoaded.location} 좌표와 진료 조건 적용`}</p>}
             <div className="pp-form-columns">
               {[fieldGroups.slice(0, 2), fieldGroups.slice(2)].map((groups, column) => (
                 <div className="pp-form-column" key={column}>
@@ -234,12 +257,20 @@ export function PatientPanel({ patient, onSave }: PatientPanelProps) {
                 </div>
               ))}
             </div>
+            {searchDraft && <PatientSearchFields id={id} value={searchDraft} onChange={setSearchDraft} />}
             {validationError && <Alert variant="destructive" className="pp-form-error"><AlertDescription>{validationError}</AlertDescription></Alert>}
           </div></ScrollArea>
           <footer className="pp-dialog-actions">
-            <p>수정 내용은 현재 접수의 환자 정보에 반영됩니다.</p>
+            <div className="pp-demo-controls">
+              <Select value={selectedDemoId} onValueChange={setSelectedDemoId}>
+                <SelectTrigger className="pp-demo-select" aria-label="불러올 데모 케이스"><SelectValue /></SelectTrigger>
+                <SelectContent className="pp-select-content" position="popper">{PATIENT_PRESETS.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button variant="outline" type="button" className="pp-load-demo" onClick={loadDemo}><Download size={15} />불러오기</Button>
+            </div>
+            <p>{search ? "완료 후 병원 조회 · 전화는 별도로 시작" : "데모 정보를 한 번에 입력할 수 있습니다."}</p>
             <DialogClose asChild><Button variant="outline" className="pp-cancel-button" type="button">취소</Button></DialogClose>
-            <Button className="pp-save-button" type="submit">평가 저장</Button>
+            <Button className="pp-save-button" type="submit">{search ? "완료" : "평가 저장"}</Button>
           </footer>
         </form>
       </DialogContent>

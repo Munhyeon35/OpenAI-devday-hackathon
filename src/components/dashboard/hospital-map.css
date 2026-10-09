@@ -6,26 +6,30 @@
 .olp-leaflet-marker, .olp-leaflet-ambulance { background: transparent; border: 0; }
 .olp-hospital-marker { position: relative; width: 34px; height: 34px; color: var(--marker-color); }
 .olp-hospital-pin { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; border: 2.5px solid #fff; border-radius: 50%; background: var(--marker-color); color: #fff; box-shadow: 0 2px 7px #29302224; transition: box-shadow .16s ease; }
-.olp-hospital-leader { position: absolute; top: 17px; left: 17px; height: 1px; background: var(--marker-color); opacity: .4; transform-origin: left center; pointer-events: none; }
+.olp-hospital-leader { position: absolute; top: 17px; left: 34px; width: 4px; height: 1px; background: var(--marker-color); opacity: .4; pointer-events: none; }
 .olp-hospital-pin svg { width: 17px; height: 17px; }
 /* Cards describe pins; letting pointer events through prevents a nearby card from selecting the wrong hospital. */
-.olp-hospital-label { position: absolute; left: 42px; top: -16px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 145px; height: 66px; padding: 7px 10px; border: 1px solid #e6e7e2; border-radius: 9px; background: #fff; color: #282e29; box-shadow: 0 3px 12px #202b2210; line-height: 1.3; white-space: nowrap; pointer-events: none; transition: border-color .15s ease, box-shadow .15s ease; }
-.olp-hospital-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 750; letter-spacing: -.4px; }
-.olp-hospital-details { display: flex; align-items: center; gap: 6px; color: #737a72; font-size: 10px; font-weight: 500; }
+/* Keep the top edge and 4px pin gap fixed; long names grow the card downward. */
+.olp-hospital-label { position: absolute; left: 38px; top: -7px; display: flex; flex-direction: column; gap: 4px; width: max-content; max-width: 220px; padding: 6px 8px; border: 1px solid #e6e7e2; border-radius: 8px; background: #fff; color: #282e29; box-shadow: 0 3px 12px #202b2210; line-height: 1.4; pointer-events: none; transition: border-color .15s ease, box-shadow .15s ease; }
+.olp-hospital-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; width: 100%; min-width: 0; overflow: hidden; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; font-size: var(--dashboard-text-body); font-weight: 750; letter-spacing: -.4px; }
+.olp-hospital-meta { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; white-space: nowrap; }
+.olp-hospital-details { display: flex; flex-shrink: 0; align-items: center; gap: 4px; color: #737a72; font-size: var(--dashboard-text-meta); font-weight: 500; font-variant-numeric: tabular-nums; }
 .olp-hospital-details b { color: #4b534c; font-weight: 650; }
 .olp-hospital-separator { color: #b4b8b2; }
-.olp-hospital-status { display: flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 9px; font-weight: 700; color: var(--marker-color); }
+.olp-hospital-status { display: flex; flex-shrink: 0; align-items: center; gap: 4px; padding: 2px 5px; border-radius: 4px; background: color-mix(in srgb, var(--marker-color) 10%, white); font-size: var(--dashboard-text-meta); font-weight: 700; color: var(--marker-color); }
 .olp-hospital-status::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
 .olp-hospital-marker--calling .olp-hospital-pin { box-shadow: 0 0 0 5px #eb791f15, 0 2px 7px #29302224; }
 .olp-leaflet-marker:hover .olp-hospital-label, .olp-leaflet-marker:focus-visible .olp-hospital-label, .olp-marker-selected .olp-hospital-label { border-color: var(--marker-color); box-shadow: 0 3px 16px #24301e16; }
 .olp-marker-selected .olp-hospital-pin { box-shadow: 0 0 0 5px color-mix(in srgb, var(--marker-color) 18%, transparent), 0 2px 7px #29302224; }
 .olp-leaflet-marker:focus-visible { outline: 3px solid #242824; outline-offset: 4px; border-radius: 50%; }
-.olp-ambulance-marker { width: 46px; height: 46px; position: relative; }
-.olp-ambulance-pin { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; border: 4px solid #fff; background: #ef7926; color: #fff; box-shadow: 0 0 0 12px #f17b2513, 0 0 0 25px #f17b2507, 0 4px 14px #99501e22; }
+.olp-ambulance-marker { width: 46px; height: 46px; position: relative; isolation: isolate; }
+.olp-ambulance-marker::before, .olp-ambulance-marker::after { content: ""; position: absolute; inset: 0; z-index: -1; border: 2px solid #dc2626; border-radius: 50%; background: #dc262614; pointer-events: none; animation: olp-ambulance-ripple 2.8s ease-out infinite; }
+.olp-ambulance-marker::after { animation-delay: -1.4s; }
+@keyframes olp-ambulance-ripple { from { transform: scale(1); opacity: .6; } to { transform: scale(2.8); opacity: 0; } }
+.olp-ambulance-pin { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; border: 4px solid #dc2626; background: #fff; color: #dc2626; box-shadow: 0 4px 14px #7f1d1d22; }
 .olp-ambulance-pin svg { width: 25px; height: 25px; }
-.olp-ambulance-label { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; line-height: 1.3; }
-.olp-ambulance-label strong { border: 1px solid #f6cbaa; border-radius: 5px; background: #fff5ec; color: #ca6420; padding: 4px 8px; font-size: 10px; font-weight: 750; }
-.olp-ambulance-label span { font-size: 9px; font-weight: 600; color: #72776e; text-shadow: 0 1px #fff, 1px 0 #fff, -1px 0 #fff, 0 -1px #fff; }
+.olp-ambulance-label { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; line-height: 1.3; }
+.olp-ambulance-label strong { border: 1px solid #e4e4e7; border-radius: 5px; background: #fff; color: #000; padding: 4px 8px; font-size: var(--dashboard-text-meta); font-weight: 750; }
 .olp-map-controls { position: absolute; z-index: 1000; left: calc(20px + var(--map-sidebar-offset, 0px)); bottom: 90px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; transition: left var(--sidebar-motion-duration) var(--sidebar-motion-easing); }
 .olp-map-controls button { display: flex; align-items: center; justify-content: center; border: 0; background: #fff; color: #495149; cursor: pointer; }
 .olp-map-controls button:hover { background: #fff6ef; color: #db6e25; }
@@ -36,6 +40,12 @@
 .olp-map-zoom button + button { border-top: 1px solid #edf0e9; }
 .olp-map-zoom [data-slot="button"] { border-radius: 0; }
 .olp-map-controls [data-slot="button"] svg { width: 20px; height: 20px; }
+.olp-map-search { position: absolute; z-index: 1100; left: calc((100% - var(--detail-width, 400px) + var(--map-sidebar-offset, 0px)) / 2); top: 46%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 14px; width: max-content; max-width: calc(100% - var(--detail-width, 400px) - var(--map-sidebar-offset, 0px) - 40px); padding: 20px 24px; border: 1px solid #eddfd4; border-radius: 16px; background: #fffffffa; box-shadow: 0 8px 36px #34301e18; pointer-events: none; }
+.olp-map-search-icon { display: grid; flex-shrink: 0; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: #fff1e7; color: #e4762d; }
+.olp-map-search-icon svg { animation: olp-search-spin 1.1s linear infinite; }
+.olp-map-search strong { display: block; color: #333830; font-size: var(--dashboard-text-body); font-weight: 750; line-height: 1.5; word-break: keep-all; }
+.olp-map-search p { margin: 5px 0 0; color: #7c8078; font-size: var(--dashboard-text-meta); line-height: 1.6; word-break: keep-all; }
+@keyframes olp-search-spin { to { transform: rotate(360deg); } }
 .olp-map-error { position: absolute; z-index: 1100; left: calc((100% - var(--detail-width, 400px) + var(--map-sidebar-offset, 0px)) / 2); top: 48%; transform: translate(-50%,-50%); display: flex; align-items: center; gap: 10px; width: min(450px, calc(100% - var(--detail-width, 400px) - var(--map-sidebar-offset, 0px) - 40px)); border: 1px solid #e6ded5; border-radius: 12px; padding: 16px; background: #fff; box-shadow: 0 4px 30px #33332212; color: #86715f; }
 .olp-map-error > svg { flex-shrink: 0; }
 .olp-map-error > span { display: flex; flex-direction: column; gap: 4px; flex: 1; }
@@ -45,4 +55,4 @@
 .olp-map-error > div { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .olp-map-error [data-slot="alert-title"] { font-size: 12px; color: #45433b; }
 .olp-map-error [data-slot="alert-description"] { font-size: 10px; line-height: 1.5; color: #8d8c81; }
-@media (prefers-reduced-motion: reduce) { .olp-hospital-pin, .olp-hospital-label { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .olp-hospital-pin, .olp-hospital-label { transition: none; }.olp-ambulance-marker::before, .olp-ambulance-marker::after { animation: none; opacity: 0; }.olp-map-search-icon svg { animation: none; } }

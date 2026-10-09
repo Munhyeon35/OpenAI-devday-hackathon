@@ -2,8 +2,8 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import { LocateFixed, Minus, Plus, RefreshCw, WifiOff } from "lucide-react";
-import { CALL_STATUS, type Hospital } from "@/lib/dashboard/types";
+import { LoaderCircle, LocateFixed, Minus, Plus, RefreshCw, WifiOff } from "lucide-react";
+import { CALL_STATUS, hospitalDistanceLabel, type EmergencyCase, type Hospital } from "@/lib/dashboard/types";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -11,6 +11,7 @@ interface HospitalMapProps {
   hospitals: Hospital[];
   ambulancePosition: [number, number];
   unit: string;
+  searchStatus?: NonNullable<EmergencyCase["candidateSearch"]>["status"];
   selectedHospitalId: string | null;
   onSelectHospital: (id: string) => void;
 }
@@ -26,13 +27,14 @@ const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://tile.openstree
 const TILE_ATTRIBUTION = [process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION, OSM_ATTRIBUTION].filter(Boolean).join(" · ");
 
 const STATUS_GLYPHS: Record<Hospital["status"], string> = {
-  processing: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pending: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   calling: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.79a2 2 0 0 1-.45 2.11L8.09 9.89a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.89.34 1.83.58 2.79.7A2 2 0 0 1 22 16.92Z"/>',
   available: '<path d="m5 12 4 4L19 6"/>',
   unavailable: '<path d="m6 6 12 12M18 6 6 18"/>',
   error: '<path d="M10.3 3.9 1.8 18.6A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.4L13.7 3.9a2 2 0 0 0-3.4 0ZM12 9v4m0 4h.01"/>',
 };
-const ambulanceGlyph = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17h5M3 17H2V6a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v11m0-9h4l3 5v4h-3M15 13h7M7 8v5m-2.5-2.5h5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>';
+// Lucide Ambulance, rendered as SVG for the Leaflet marker.
+const ambulanceGlyph = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 10H6M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14M8 8v4M9 18h6"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>';
 
 function hospitalIcon(hospital: Hospital) {
   const wrapper = document.createElement("div");
@@ -47,20 +49,27 @@ function hospitalIcon(hospital: Hospital) {
   label.className = "olp-hospital-label";
   const name = document.createElement("strong");
   name.className = "olp-hospital-name";
-  name.textContent = hospital.shortName || hospital.name;
-  const details = document.createElement("span");
-  details.className = "olp-hospital-details";
-  details.textContent = `${hospital.distance.toFixed(1)} km`;
-  const separator = document.createElement("span");
-  separator.className = "olp-hospital-separator";
-  separator.textContent = "·";
-  const eta = document.createElement("b");
-  eta.textContent = `약 ${hospital.eta}분`;
-  details.append(separator, eta);
+  name.textContent = hospital.name;
+  const meta = document.createElement("span");
+  meta.className = "olp-hospital-meta";
   const status = document.createElement("span");
   status.className = "olp-hospital-status";
   status.textContent = CALL_STATUS[hospital.status].shortLabel;
-  label.append(name, details, status);
+  meta.append(status);
+  if (hospital.status !== "unavailable") {
+    const details = document.createElement("span");
+    details.className = "olp-hospital-details";
+    const eta = document.createElement("b");
+    eta.textContent = hospital.eta === null ? "시간 미확인" : `약 ${hospital.eta}분`;
+    const separator = document.createElement("span");
+    separator.className = "olp-hospital-separator";
+    separator.textContent = "·";
+    const distance = document.createElement("span");
+    distance.textContent = `${hospitalDistanceLabel(hospital)} ${hospital.distance.toFixed(1)} km`.trim();
+    details.append(eta, separator, distance);
+    meta.append(details);
+  }
+  label.append(name, meta);
   wrapper.append(leader, pin, label);
   return L.divIcon({ html: wrapper, className: "olp-leaflet-marker", iconSize: [34, 34], iconAnchor: [17, 17] });
 }
@@ -75,14 +84,10 @@ function ambulanceIcon(unit: string) {
   label.className = "olp-ambulance-label";
   const name = document.createElement("strong");
   name.textContent = unit;
-  const description = document.createElement("span");
-  description.textContent = "구급차 현재 위치";
-  label.append(name, description);
+  label.append(name);
   wrapper.append(icon, label);
   return L.divIcon({ html: wrapper, className: "olp-leaflet-ambulance", iconSize: [46, 46], iconAnchor: [23, 23] });
 }
-
-type MapBox = { left: number; top: number; right: number; bottom: number };
 
 function mapInsets(map: L.Map) {
   const size = map.getSize();
@@ -94,87 +99,23 @@ function mapInsets(map: L.Map) {
   return { left: clippedLeft + Math.min(75, (size.x - clippedLeft) * 0.075), right: detailWidth + 40, top: Math.min(170, size.y * 0.27), bottom: Math.min(100, size.y * 0.16), detailWidth, clippedLeft };
 }
 
-function fitHospitalBounds(map: L.Map, markers: Map<string, HospitalMarker>, ambulance: L.Marker | null) {
+function fitHospitalBounds(map: L.Map, markers: Map<string, HospitalMarker>, ambulance: L.Marker | null, initial: boolean) {
   const points = Array.from(markers.values()).map(({ marker }) => marker.getLatLng());
   if (ambulance) points.push(ambulance.getLatLng());
   if (!points.length) return;
   const insets = mapInsets(map);
-  map.fitBounds(L.latLngBounds(points), {
+  map.flyToBounds(L.latLngBounds(points), {
     paddingTopLeft: [insets.left, insets.top],
     paddingBottomRight: [insets.right, insets.bottom],
-    maxZoom: 14,
-    animate: false,
+    // Empty results should not zoom into the ambulance. Later searches may
+    // zoom out to include new candidates, but retain the operator's wider view.
+    maxZoom: initial ? 14 : map.getZoom(),
+    animate: !initial && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    duration: 0.85,
   });
 }
 
-/** Try only nearby positions so every information card stays associated with its real pin. */
-function arrangeLabels(map: L.Map, markers: Map<string, HospitalMarker>, ambulance: L.Marker | null) {
-  const size = map.getSize();
-  const { detailWidth, clippedLeft } = mapInsets(map);
-  const width = 145;
-  const height = 66;
-  const panelLeft = size.x - detailWidth - 20;
-  const reserved: MapBox[] = [
-    { left: panelLeft, top: 0, right: size.x, bottom: size.y },
-    { left: clippedLeft + 12, top: 12, right: Math.min(clippedLeft + 648, panelLeft - 12), bottom: 146 },
-    { left: clippedLeft + 12, top: size.y - 74, right: clippedLeft + 428, bottom: size.y },
-    { left: clippedLeft + 14, top: size.y - 234, right: clippedLeft + 70, bottom: size.y - 84 },
-  ];
-  const intersectsPoint = (box: MapBox, point: L.Point) => point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom;
-  const isVisible = (point: L.Point) => point.x >= clippedLeft && point.x <= size.x && point.y >= 0 && point.y <= size.y && !reserved.some((box) => intersectsPoint(box, point));
-  const overlap = (a: MapBox, b: MapBox) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-  const pointMarkers = Array.from(markers.values()).map(({ marker }) => map.latLngToContainerPoint(marker.getLatLng())).filter(isVisible);
-  const placed: MapBox[] = [];
-  let ambulanceBox: MapBox | null = null;
-  if (ambulance) {
-    const point = map.latLngToContainerPoint(ambulance.getLatLng());
-    const label = ambulance.getElement()?.querySelector<HTMLElement>(".olp-ambulance-label");
-    if (label) label.style.display = isVisible(point) ? "" : "none";
-    if (isVisible(point)) ambulanceBox = { left: point.x - 64, right: point.x + 64, top: point.y - 28, bottom: point.y + 86 };
-  }
-  for (const { marker } of markers.values()) {
-    const label = marker.getElement()?.querySelector<HTMLElement>(".olp-hospital-label");
-    if (!label) continue;
-    const point = map.latLngToContainerPoint(marker.getLatLng());
-    const leader = marker.getElement()?.querySelector<HTMLElement>(".olp-hospital-leader");
-    label.style.display = isVisible(point) ? "" : "none";
-    if (leader) leader.style.display = isVisible(point) ? "" : "none";
-    if (!isVisible(point)) continue;
-    const horizontal = point.x > panelLeft / 2 ? [-width - 25, 25] : [25, -width - 25];
-    const offsets = [...horizontal, -width / 2].flatMap((x) => [-height / 2, -height - 25, 25, -height - 90, 90].map((y) => ({ x, y })));
-    offsets.push(...[-width - 75, 75].flatMap((x) => [-height / 2, -height - 25, 25].map((y) => ({ x, y }))));
-    let chosen: MapBox | null = null;
-    let bestScore = Infinity;
-    offsets.forEach(({ x, y }, index) => {
-      const box = { left: point.x + x, top: point.y + y, right: point.x + x + width, bottom: point.y + y + height };
-      if (box.left < clippedLeft + 12 || box.right > size.x - 12 || box.top < 12 || box.bottom > size.y - 12 || reserved.some((area) => overlap(box, area) > 0)) return;
-      const cardOverlap = placed.reduce((sum, previous) => sum + overlap(box, previous), 0);
-      const pinOverlap = pointMarkers.reduce((sum, pin) => sum + overlap(box, { left: pin.x - 18, top: pin.y - 18, right: pin.x + 18, bottom: pin.y + 18 }), 0);
-      const distance = Math.hypot(x + width / 2, y + height / 2);
-      const score = cardOverlap * 100 + pinOverlap * 3 + (ambulanceBox ? overlap(box, ambulanceBox) : 0) + distance + index;
-      if (score < bestScore) { chosen = box; bestScore = score; }
-    });
-    if (!chosen) {
-      label.style.display = "none";
-      if (leader) leader.style.display = "none";
-      continue;
-    }
-    const box = chosen as MapBox;
-    placed.push(box);
-    const offsetX = box.left - point.x;
-    const offsetY = box.top - point.y;
-    label.style.left = `${offsetX + 17}px`;
-    label.style.top = `${offsetY + 17}px`;
-    if (leader) {
-      const x = Math.max(offsetX, Math.min(0, offsetX + width));
-      const y = Math.max(offsetY, Math.min(0, offsetY + height));
-      leader.style.width = `${Math.hypot(x, y)}px`;
-      leader.style.transform = `rotate(${Math.atan2(y, x)}rad)`;
-    }
-  }
-}
-
-const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, unit, selectedHospitalId, onSelectHospital }: HospitalMapProps) {
+const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, unit, searchStatus, selectedHospitalId, onSelectHospital }: HospitalMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tilesRef = useRef<L.TileLayer | null>(null);
@@ -209,15 +150,10 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
     tiles.on("tileload", onTileLoad);
     tiles.on("load", onTilesComplete);
     tiles.addTo(map);
-    const layout = () => arrangeLabels(map, markersRef.current, ambulanceRef.current);
-    map.on("zoomend moveend resize", layout);
     let frame = 0;
-    let layoutTimer: ReturnType<typeof setTimeout>;
     const container = containerRef.current;
-    const workspace = container.closest(".workspace");
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
-      clearTimeout(layoutTimer);
       frame = requestAnimationFrame(() => {
         const size = map.getSize();
         // Sidebar motion only clips the fixed canvas. A real viewport resize
@@ -225,22 +161,17 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
         if (size.x !== container.clientWidth || size.y !== container.clientHeight) {
           map.invalidateSize({ pan: true, animate: false, debounceMoveend: true });
         }
-        // Reposition labels once the panels settle, without moving the camera.
-        layoutTimer = setTimeout(layout, 100);
       });
     });
     observer.observe(container);
-    if (workspace) observer.observe(workspace);
     const markers = markersRef.current;
     return () => {
       observer.disconnect();
       cancelAnimationFrame(frame);
-      clearTimeout(layoutTimer);
       tiles.off("loading", onLoading);
       tiles.off("tileerror", onTileError);
       tiles.off("tileload", onTileLoad);
       tiles.off("load", onTilesComplete);
-      map.off("zoomend moveend resize", layout);
       map.remove();
       markers.clear();
       ambulanceRef.current = null;
@@ -255,7 +186,7 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
     const map = mapRef.current;
     if (!map) return;
     // Call timers and streamed messages update frequently but do not change the map.
-    const dataFingerprint = JSON.stringify([unit, ambulancePosition, selectedHospitalId, hospitals.map(({ id, name, shortName, distance, eta, status, position }) => [id, name, shortName, distance, eta, status, position])]);
+    const dataFingerprint = JSON.stringify([unit, ambulancePosition, selectedHospitalId, hospitals.map((hospital) => [hospital.id, hospital.name, hospital.shortName, hospital.distance, hospital.eta, hospital.status, hospital.position, hospitalDistanceLabel(hospital)])]);
     if (dataFingerprint === dataFingerprintRef.current) return;
     dataFingerprintRef.current = dataFingerprint;
     const activeIds = new Set(hospitals.map((hospital) => hospital.id));
@@ -263,7 +194,7 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       if (!activeIds.has(id)) { entry.marker.remove(); markersRef.current.delete(id); }
     }
     for (const hospital of hospitals) {
-      const fingerprint = JSON.stringify([hospital.name, hospital.shortName, hospital.distance, hospital.eta, hospital.status, hospital.position]);
+      const fingerprint = JSON.stringify([hospital.name, hospital.shortName, hospital.distance, hospital.eta, hospital.status, hospital.position, hospitalDistanceLabel(hospital)]);
       let entry = markersRef.current.get(hospital.id);
       if (!entry) {
         const marker = L.marker(hospital.position, { icon: hospitalIcon(hospital), keyboard: true, title: hospital.name, riseOnHover: true });
@@ -280,7 +211,8 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       }
       const element = entry.marker.getElement();
       element?.setAttribute("role", "button");
-      element?.setAttribute("aria-label", `${hospital.name}, ${hospital.distance}킬로미터, 예상 ${hospital.eta}분, ${CALL_STATUS[hospital.status].label}. 통화 내용 보기`);
+      const travelDetails = hospital.status === "unavailable" ? "" : `, ${hospital.eta === null ? "시간 미확인," : `예상 ${hospital.eta}분,`} ${hospitalDistanceLabel(hospital)} ${hospital.distance.toFixed(1)}킬로미터`;
+      element?.setAttribute("aria-label", `${hospital.name}, ${CALL_STATUS[hospital.status].label}${travelDetails}. 통화 내용 보기`);
       element?.setAttribute("aria-pressed", String(hospital.id === selectedHospitalId));
       element?.classList.toggle("olp-marker-selected", hospital.id === selectedHospitalId);
       entry.marker.setZIndexOffset(hospital.id === selectedHospitalId ? 900 : 0);
@@ -292,17 +224,28 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
       const label = ambulanceRef.current.getElement()?.querySelector(".olp-ambulance-label strong");
       if (label) label.textContent = unit;
     }
-    const extent = JSON.stringify([ambulancePosition, hospitals.map(({ id, position }) => [id, position])]);
-    if (extent !== extentRef.current) {
-      extentRef.current = extent;
-      fitHospitalBounds(map, markersRef.current, ambulanceRef.current);
-    }
-    arrangeLabels(map, markersRef.current, ambulanceRef.current);
   }, [hospitals, ambulancePosition, unit, selectedHospitalId]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    // A search clears the markers while fetching. Keep the camera and last
+    // completed extent so a retry with identical results preserves user zoom.
+    if (!map || (searchStatus && searchStatus !== "ready")) return;
+    const extent = JSON.stringify([ambulancePosition, hospitals.map(({ id, position }) => ({ id, position })).sort((first, second) => first.id.localeCompare(second.id))]);
+    if (extent !== extentRef.current) {
+      const initial = !extentRef.current && !searchStatus;
+      extentRef.current = extent;
+      fitHospitalBounds(map, markersRef.current, ambulanceRef.current, initial);
+    }
+  }, [hospitals, ambulancePosition, searchStatus]);
 
   return (
     <div className="olp-map-shell">
       <div ref={containerRef} className="olp-map-canvas" aria-label="구급차와 병원 위치 지도. 화살표 키로 이동하고 더하기와 빼기 키로 확대 및 축소할 수 있습니다." />
+      {searchStatus === "loading" && <div className="olp-map-search" role="status" aria-live="polite" aria-atomic="true">
+        <span className="olp-map-search-icon"><LoaderCircle size={25} aria-hidden="true" /></span>
+        <div><strong>조건에 맞는 병원을 찾고 있어요</strong><p>병원 정보와 이동 경로를 확인하고 있습니다.</p></div>
+      </div>}
       <div className="olp-map-controls" aria-label="지도 조작">
         <Button variant="outline" size="icon" className="olp-map-locate" type="button" title="구급차 위치로 이동" aria-label="구급차 위치로 이동" onClick={() => {
           const map = mapRef.current;
@@ -317,7 +260,7 @@ const HospitalMap = memo(function HospitalMap({ hospitals, ambulancePosition, un
           <Button variant="ghost" size="icon" type="button" title="지도 축소" aria-label="지도 축소" onClick={() => mapRef.current?.zoomOut()}><Minus size={20} /></Button>
         </div>
       </div>
-      {tileError && <Alert className="olp-map-error"><WifiOff size={19} /><div><AlertTitle>지도를 불러오지 못했습니다</AlertTitle><AlertDescription>네트워크 연결을 확인한 후 다시 시도해 주세요.</AlertDescription></div><Button variant="outline" size="sm" type="button" onClick={() => { setTileError(false); tilesRef.current?.redraw(); }}><RefreshCw size={14} />다시 시도</Button></Alert>}
+      {tileError && searchStatus !== "loading" && <Alert className="olp-map-error"><WifiOff size={19} /><div><AlertTitle>지도를 불러오지 못했습니다</AlertTitle><AlertDescription>네트워크 연결을 확인한 후 다시 시도해 주세요.</AlertDescription></div><Button variant="outline" size="sm" type="button" onClick={() => { setTileError(false); tilesRef.current?.redraw(); }}><RefreshCw size={14} />다시 시도</Button></Alert>}
     </div>
   );
 });

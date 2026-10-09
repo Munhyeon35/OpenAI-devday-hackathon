@@ -1,4 +1,8 @@
 /* Keep the shadcn Sidebar, its ScrollArea and keyed menu items mounted. */
+.reception-sidebar-ui .reception-sidebar-footer { flex-shrink: 0; padding: 16px; border-top: 1px solid #eceef2; background: #fff; }
+.reception-sidebar-ui .add-patient-button { width: 100%; height: 44px; gap: 8px; font-weight: 650; }
+.case-status.draft, .case-status.ready { color: #64748b; }
+.case-status.draft i, .case-status.ready i, .status-dot.pending { background: #64748b; }
 .dashboard [data-slot="sidebar-gap"], .dashboard [data-slot="sidebar-container"] {
   transition-duration: var(--sidebar-motion-duration);
   transition-timing-function: var(--sidebar-motion-easing);
@@ -13,13 +17,13 @@
 .reception-sidebar-ui .sidebar-toggle-icon { transition: transform var(--sidebar-motion-duration) var(--sidebar-motion-easing); }
 .reception-sidebar-ui.is-collapsed .sidebar-toggle-icon { transform: scaleX(-1); }
 .reception-sidebar-ui .reception-sidebar-content { gap: 0; min-height: 0; overflow: hidden; }
-.reception-sidebar-ui .sidebar-tools-collapse, .reception-sidebar-ui .sidebar-footer-collapse { flex: 0 0 auto; }
+.reception-sidebar-ui .sidebar-tools-collapse { flex: 0 0 auto; }
 .reception-sidebar-ui .sidebar-reveal { display: grid; grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows var(--sidebar-motion-duration) var(--sidebar-motion-easing), opacity 140ms ease 100ms, visibility 0s; }
 .reception-sidebar-ui .sidebar-reveal[data-state="closed"] { grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows var(--sidebar-motion-duration) var(--sidebar-motion-easing), opacity 100ms ease, visibility 0s 100ms; }
 .reception-sidebar-ui .sidebar-reveal-inner { min-height: 0; overflow: hidden; }
 .reception-sidebar-ui .sidebar-tools { width: var(--reception-sidebar-width); }
-.reception-sidebar-ui .sidebar-count { padding: 1px 6px; border: 0; background: #f4f4f5; color: #83838c; font-size: 11px; }
-.reception-sidebar-ui .sidebar-search-input { height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 11px; }
+.reception-sidebar-ui .sidebar-count { padding: 1px 6px; border: 0; background: #f4f4f5; color: #83838c; font-size: var(--dashboard-text-meta); }
+.reception-sidebar-ui .sidebar-search-input { height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: var(--dashboard-text-meta); }
 .reception-sidebar-ui .sidebar-search-input:focus-visible { outline: none; box-shadow: none; }
 .reception-sidebar-ui .case-search:focus-within { border-color: var(--ring); box-shadow: 0 0 0 2px #e7946529; }
 .reception-sidebar-ui .sidebar-clear-search { width: 22px; height: 25px; flex-shrink: 0; padding: 0; }
@@ -36,11 +40,10 @@
 .reception-sidebar-ui .reception-number strong { font-size: 12px; transition: font-size var(--sidebar-motion-duration) var(--sidebar-motion-easing); }
 .reception-sidebar-ui.is-collapsed .reception-card > .reception-number { left: 50%; transform: translateX(-50%); }
 .reception-sidebar-ui.is-collapsed .reception-number strong { font-size: 17px; }
-.reception-sidebar-ui .reception-card > .case-status { position: absolute; top: 15px; left: calc(100% - 14px); transform: translateX(-100%); padding: 0; border: 0; border-radius: 0; background: transparent; font-size: 11px; transition: top var(--sidebar-motion-duration) var(--sidebar-motion-easing), left var(--sidebar-motion-duration) var(--sidebar-motion-easing), transform var(--sidebar-motion-duration) var(--sidebar-motion-easing); }
+.reception-sidebar-ui .reception-card > .case-status { position: absolute; top: 15px; left: calc(100% - 14px); transform: translateX(-100%); padding: 0; border: 0; border-radius: 0; background: transparent; font-size: var(--dashboard-text-meta); transition: top var(--sidebar-motion-duration) var(--sidebar-motion-easing), left var(--sidebar-motion-duration) var(--sidebar-motion-easing), transform var(--sidebar-motion-duration) var(--sidebar-motion-easing); }
 .reception-sidebar-ui.is-collapsed .reception-card > .case-status { top: 51px; left: 50%; transform: translateX(-50%); }
 .reception-sidebar-ui .reception-expanded-details { position: absolute; top: 44px; left: 14px; width: calc(var(--reception-sidebar-width) - 58px); display: block; white-space: normal; text-align: left; opacity: 1; visibility: visible; transform: translateX(0); transition: opacity 140ms ease 100ms, transform var(--sidebar-motion-duration) var(--sidebar-motion-easing), visibility 0s; }
 .reception-sidebar-ui.is-collapsed .reception-expanded-details { opacity: 0; visibility: hidden; transform: translateX(-8px); transition: opacity 100ms ease, transform var(--sidebar-motion-duration) var(--sidebar-motion-easing), visibility 0s 100ms; }
-.reception-sidebar-ui .sidebar-footer { width: var(--reception-sidebar-width); flex-direction: row; gap: 6px; padding: 18px; }
 @media (max-height: 780px) { .reception-sidebar-ui { --reception-card-height: 144px; }.reception-sidebar-ui.is-collapsed { --reception-card-height: 85px; } }
 .reception-history-dialog { display: flex; flex-direction: column; gap: 0; width: 560px; max-width: calc(100vw - 40px); max-height: 84dvh; padding: 0; overflow: hidden; border: 1px solid #e0e0e5; border-radius: 15px; background: #fff; box-shadow: 0 24px 100px #18181b30; }
 .reception-history-dialog .history-header { flex-direction: row; align-items: flex-start; gap: 12px; text-align: left; flex-shrink: 0; }

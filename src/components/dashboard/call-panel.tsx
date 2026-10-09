@@ -86,6 +86,7 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
           <div className="conversation-heading">
             <div className="conversation-hospital-title"><h3>{selected.name}</h3><Badge variant="secondary" className={`status-badge ${selected.status}`}><StatusIcon status={selected.status} size={12} />{PANEL_STATUS[selected.status]}</Badge></div>
             <p>{selected.department}<span>·</span>{hospitalDistanceLabel(selected)} {selected.distance.toFixed(1)} km{selected.eta !== null && <><span>·</span>예상 {selected.eta}분</>}</p>
+            {selected.status !== "calling" && <Alert className={`call-result ${selected.status}`}><StatusIcon status={selected.status} /><AlertDescription>{selected.note}</AlertDescription></Alert>}
           </div>
           {selected.status === "calling" && <div className="conversation-progress"><PhoneCall size={15} /><span>{selected.note}</span></div>}
           <ScrollArea className="conversation-feed" ref={scrollRef} onScrollCapture={(event) => {
@@ -96,7 +97,7 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
           }}>
             <div className="conversation-content">
             {selected.candidate && <div className="candidate-detail"><p>{selected.candidate.address}</p><p>응급실 {selected.candidate.emergencyPhone || "번호 정보 없음"}</p><strong>{selected.candidate.match === "reported_match" ? "선택 조건 충족 보고" : "조건 확인 필요"} · 수용 미확정</strong>{selected.candidate.checks.map((check) => <p key={check.code}>{check.label}: {check.status === "reported_available" ? "가능 보고" : check.status === "reported_unavailable" ? "불가 보고" : "확인 필요"}{check.detail && ` · ${check.detail}`}</p>)}{selected.candidate.procedureNotes.map((note) => <p key={note}>{note}</p>)}</div>}
-            <div className="conversation-start"><Separator /><span>{selected.status === "pending" ? "전화 전 · 아직 대화가 없습니다" : "AI 데모 통화 대화"}</span><Separator /></div>
+            {selected.status === "pending" && <div className="conversation-start"><Separator /><span>전화 전 · 아직 대화가 없습니다</span><Separator /></div>}
             {selected.messages.map((message) => (
               <div className={`message ${message.role}`} key={message.id}>
                 <div className="message-label">{message.role === "hospital" ? <><HospitalIcon size={14} /> 병원</> : <><Bot size={15} /> 올뺑이 AI</>}</div>
@@ -111,12 +112,11 @@ export function CallPanel({ hospitals, selectedHospitalId, onSelectHospital, str
                 <span className="stream-caption">대화 표시 중</span>
               </div>
             )}
-            {selected.status !== "calling" && <Alert className={`call-result ${selected.status}`}><StatusIcon status={selected.status} /><AlertDescription>{selected.note}</AlertDescription></Alert>}
             </div>
           </ScrollArea>
-          <div className="conversation-footer">
-            {selected.status === "pending" ? <><Clock3 size={15} /><span>일괄 전화 시작을 기다리고 있습니다.</span></> : selected.status === "calling" ? <><span className="waveform" aria-hidden="true"><i /><i /><i /><i /><i /></span><span>대화 수신 중</span><Badge variant="outline" className="demo-mini">데모 통화</Badge></> : selected.status === "error" && canRetry ? <Button type="button" variant="ghost" className="retry-button" onClick={() => onRetry(selected.id)}><RefreshCw size={15} />연결 다시 시도<Badge variant="outline" className="demo-mini">데모 통화</Badge></Button> : <><Check size={15} /><span>통화 종료 · 접수 기록에 반영됨</span><Badge variant="outline" className="demo-mini">데모 통화</Badge></>}
-          </div>
+          {selected.status === "error" && canRetry && <div className="conversation-footer">
+            <Button type="button" variant="ghost" className="retry-button" onClick={() => onRetry(selected.id)}><RefreshCw size={15} />연결 다시 시도</Button>
+          </div>}
         </>
       ) : (
         <>

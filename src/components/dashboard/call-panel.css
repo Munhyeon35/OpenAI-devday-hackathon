@@ -288,6 +288,7 @@
 .call-panel .conversation-heading {
   flex: none;
   padding: 19px 22px 17px;
+  border-bottom: 1px solid #e9ebef;
 }
 
 .call-panel .conversation-hospital-title { display: flex; align-items: center; gap: 9px; }
@@ -336,6 +337,7 @@
 .call-panel .stream-cursor { display: inline-block; width: 2px; height: 14px; margin-left: 3px; background: #e79c64; vertical-align: -2px; animation: call-cursor-blink 1s steps(2, start) infinite; }
 
 .call-panel .call-result { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; padding: 13px; border: 1px solid #e7ebef; border-radius: 9px; background: #fafbfc; color: #87909d; font-size: 12px; line-height: 1.7; }
+.call-panel .conversation-heading .call-result { margin-top: 12px; }
 .call-panel .call-result svg { flex-shrink: 0; margin-top: 3px; }
 .call-panel .call-result [data-slot="alert-description"] { display: block; color: inherit; font-size: inherit; line-height: inherit; }
 .call-panel .call-result.available { border-color: #dceee4; background: #f3faf6; color: #398866; }

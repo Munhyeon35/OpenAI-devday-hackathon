@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { compareHospitalTravel, formatDuration, hospitalDistanceLabel, type EmergencyCase, type Hospital } from "@/lib/dashboard/types";
 
 interface CallPanelProps {
+  demoRouting?: boolean;
   mode?: "live" | "demo" | null;
   hospitals: Hospital[];
   selectedHospitalId: string | null;
@@ -27,7 +28,7 @@ interface CallPanelProps {
 }
 
 export function StatusIcon({ status, size = 14 }: { status: Hospital["status"]; size?: number }) {
-  const Icon = status === "pending" ? Clock3 : status === "available" ? Check : status === "unavailable" ? X : status === "error" ? CircleAlert : PhoneCall;
+  const Icon = status === "pending" ? Clock3 : status === "available" ? Check : status === "unavailable" ? X : status === "error" || status === "no_answer" ? CircleAlert : PhoneCall;
   return <Icon size={size} aria-hidden="true" />;
 }
 
@@ -37,10 +38,11 @@ const PANEL_STATUS: Record<Hospital["status"], string> = {
   available: "수용 가능",
   unavailable: "수용 불가",
   error: "응답 오류",
+  no_answer: "미응답",
 };
 
-export function CallPanel({ mode = null, hospitals, selectedHospitalId, onSelectHospital, streamingText, streamingRole, canRetry, onRetry, search, onSearchAgain, onStartCalls }: CallPanelProps) {
-  const modeNotice = mode === "live" ? "실제 발신 · 통화 비용 발생" : mode === "demo" ? "모의 통화 · 실제 발신 없음" : "통화 서버 확인 중";
+export function CallPanel({ mode = null, demoRouting = false, hospitals, selectedHospitalId, onSelectHospital, streamingText, streamingRole, canRetry, onRetry, search, onSearchAgain, onStartCalls }: CallPanelProps) {
+  const modeNotice = demoRouting ? "데모 · 지정 휴대폰만 발신, 나머지 미응답 처리" : mode === "live" ? "실제 발신 · 통화 비용 발생" : mode === "demo" ? "모의 통화 · 실제 발신 없음" : "통화 서버 확인 중";
   const [filter, setFilter] = useState<"all" | "available" | "calling">("all");
   const [sort, setSort] = useState<"distance" | "eta">("distance");
   const selected = hospitals.find((hospital) => hospital.id === selectedHospitalId);
@@ -98,7 +100,7 @@ export function CallPanel({ mode = null, hospitals, selectedHospitalId, onSelect
             }
           }}>
             <div className="conversation-content">
-            {selected.candidate && <div className="candidate-detail"><p>{selected.candidate.address}</p><p>응급실 {selected.candidate.emergencyPhone || "번호 정보 없음"}</p><strong>{selected.candidate.match === "reported_match" ? "선택 조건 충족 보고" : "조건 확인 필요"} · 수용 미확정</strong>{selected.candidate.checks.map((check) => <p key={check.code}>{check.label}: {check.status === "reported_available" ? "가능 보고" : check.status === "reported_unavailable" ? "불가 보고" : "확인 필요"}{check.detail && ` · ${check.detail}`}</p>)}{selected.candidate.procedureNotes.map((note) => <p key={note}>{note}</p>)}</div>}
+            {selected.candidate && <div className="candidate-detail"><p>{selected.candidate.address}</p><p>응급실 {selected.demoPhone || selected.candidate.emergencyPhone || "번호 정보 없음"}</p><strong>{selected.candidate.match === "reported_match" ? "선택 조건 충족 보고" : "조건 확인 필요"} · 수용 미확정</strong>{selected.candidate.checks.map((check) => <p key={check.code}>{check.label}: {check.status === "reported_available" ? "가능 보고" : check.status === "reported_unavailable" ? "불가 보고" : "확인 필요"}{check.detail && ` · ${check.detail}`}</p>)}{selected.candidate.procedureNotes.map((note) => <p key={note}>{note}</p>)}</div>}
             {selected.status === "pending" && <div className="conversation-start"><Separator /><span>전화 전 · 아직 대화가 없습니다</span><Separator /></div>}
             {selected.messages.map((message) => (
               <div className={`message ${message.role}`} key={message.id}>
@@ -156,7 +158,7 @@ export function CallPanel({ mode = null, hospitals, selectedHospitalId, onSelect
           </Tabs>
         </>
       )}
-      {pendingCount > 0 && search?.status === "ready" && <div className="bulk-call-prompt"><div><strong>{pendingCount}곳에 전화할까요?</strong><span>{modeNotice}</span></div><Button type="button" onClick={onStartCalls}><PhoneCall size={16} />일괄 전화 시작</Button></div>}
+      {pendingCount > 0 && search?.status === "ready" && <div className="bulk-call-prompt"><div><strong>{demoRouting ? "지정된 두 병원으로 데모 시작" : `${pendingCount}곳에 전화할까요?`}</strong><span>{modeNotice}</span></div><Button type="button" onClick={onStartCalls}><PhoneCall size={16} />일괄 전화 시작</Button></div>}
     </Card>
   );
 }

@@ -1,3 +1,4 @@
+import { demoPhone, demoTargets } from '../dashboard/demo-routing.ts';
 // Imported only by server Route Handlers. Operator credentials never enter a browser bundle.
 type Options = {
   env?: Record<string, string | undefined>;
@@ -54,6 +55,17 @@ export async function proxyDispatch(request: Request, path: string, options: Opt
       }
       body = Buffer.concat(chunks).toString("utf8");
     }
+    const demo = demoTargets(env);
+    if (demo && request.method === "POST" && path === "/api/dispatches") {
+      let payload;
+      try { payload = JSON.parse(body || 'null'); } catch { return failure(400, "JSON 요청을 확인하세요."); }
+      // Refuse the whole request before forwarding: even a stale browser cannot dial a real hospital.
+      if (!Array.isArray(payload?.hospitals) || payload.hospitals.length < 1 || payload.hospitals.length > 2 ||
+          payload.hospitals.some((h: { name?: string; phone?: string } | null) => !h || typeof h.name !== 'string' ||
+            !demoPhone(h.name, demo) || h.phone !== demoPhone(h.name, demo)) ||
+          new Set(payload.hospitals.map((h: { phone: string }) => h.phone)).size !== payload.hospitals.length)
+        return failure(403, "데모에서는 강남세브란스·중앙대병원의 지정된 테스트 번호만 발신할 수 있습니다. 화면을 새로고침하세요.");
+    }
     const headers = new Headers({ "Content-Type": "application/json" });
     if (env.OPERATOR_TOKEN) headers.set("Authorization", `Bearer ${env.OPERATOR_TOKEN}`);
     const key = request.headers.get("idempotency-key");
@@ -80,7 +92,7 @@ export async function proxyDispatch(request: Request, path: string, options: Opt
     } finally { clearTimeout(timeout); }
     const data = await result.json();
     if (path === "/api/config" && result.ok) {
-      return Response.json({ mode: data.mode, auth_required: false, backbed_configured: Boolean(data.backbed_configured) },
+      return Response.json({ ...(demo ? { demo_call_targets: demo } : {}), mode: data.mode, auth_required: false, backbed_configured: Boolean(data.backbed_configured) },
         { headers: { "Cache-Control": "no-store" } });
     }
     return Response.json(data, { status: result.status, headers: { "Cache-Control": "no-store" } });

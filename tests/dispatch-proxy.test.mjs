@@ -130,3 +130,19 @@ test('SSE abort propagates to upstream and public clients never get operator acc
   const blocked=await proxyDispatch(new Request('https://public.example/api/dispatches/events'),'/api/dispatches/events',{env,fetcher:()=>{throw Error('must not fetch');}});
   assert.equal(blocked.status,403);
 });
+
+test('presentation server rejects all non-demo numbers, including stale frontend requests',async()=>{
+  const demoEnv={...env,DEMO_CALL_ROUTING:'true',DEMO_GANGNAM_PHONE:'+821011111111',DEMO_CHUNGANG_PHONE:'+821022222222'};
+  let forwards=0;
+  const fetcher=async()=>{forwards++;return Response.json({id});};
+  const send=hospitals=>proxyDispatch(new Request('http://localhost:3000/api/dispatches',{
+    method:'POST',headers:{origin:'http://localhost:3000','content-type':'application/json'},
+    body:JSON.stringify({patient:{name:'가상 환자'},hospitals}),
+  }),path,{env:demoEnv,fetcher});
+  assert.equal((await send([{name:'강남세브란스병원',phone:'+82212345678'}])).status,403);
+  assert.equal((await send([{name:'중앙대학교광명병원',phone:demoEnv.DEMO_CHUNGANG_PHONE}])).status,403);
+  assert.equal((await send([{name:'다른 병원',phone:demoEnv.DEMO_GANGNAM_PHONE}])).status,403);
+  assert.equal(forwards,0);
+  assert.equal((await send([{name:'강남세브란스병원',phone:demoEnv.DEMO_GANGNAM_PHONE},{name:'중앙대학교병원',phone:demoEnv.DEMO_CHUNGANG_PHONE}])).status,200);
+  assert.equal(forwards,1);
+});

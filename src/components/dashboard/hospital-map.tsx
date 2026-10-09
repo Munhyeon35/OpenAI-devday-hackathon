@@ -31,6 +31,7 @@ const STATUS_GLYPHS: Record<Hospital["status"], string> = {
   calling: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.79a2 2 0 0 1-.45 2.11L8.09 9.89a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.89.34 1.83.58 2.79.7A2 2 0 0 1 22 16.92Z"/>',
   available: '<path d="m5 12 4 4L19 6"/>',
   unavailable: '<path d="m6 6 12 12M18 6 6 18"/>',
+  no_answer: '<path d="M12 8v4m0 4h.01"/><circle cx="12" cy="12" r="9"/>',
   error: '<path d="M10.3 3.9 1.8 18.6A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.4L13.7 3.9a2 2 0 0 0-3.4 0ZM12 9v4m0 4h.01"/>',
 };
 // Lucide Ambulance, rendered as SVG for the Leaflet marker.

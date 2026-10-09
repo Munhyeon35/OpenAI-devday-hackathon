@@ -207,7 +207,7 @@
 .call-panel .status-badge.calling { background: #fff1e7; color: #dd742d; }
 .call-panel .status-badge.available { background: #eaf7ef; color: #27845d; }
 .call-panel .status-badge.unavailable { background: #fdeeee; color: #ce6068; }
-.call-panel .status-badge.error { background: #f1eff7; color: #827b9b; }
+.call-panel .status-badge.error, .call-panel .status-badge.no_answer { background: #f1eff7; color: #827b9b; }
 .call-panel .status-badge svg { width: 12px; height: 12px; }
 
 .call-panel .hospital-eta {
@@ -342,7 +342,7 @@
 .call-panel .call-result [data-slot="alert-description"] { display: block; color: inherit; font-size: inherit; line-height: inherit; }
 .call-panel .call-result.available { border-color: #dceee4; background: #f3faf6; color: #398866; }
 .call-panel .call-result.unavailable { border-color: #f3dfe1; background: #fef7f7; color: #ba6f76; }
-.call-panel .call-result.error { border-color: #e8e3ef; background: #f8f6fb; color: #897d9d; }
+.call-panel .call-result.error, .call-panel .call-result.no_answer { border-color: #e8e3ef; background: #f8f6fb; color: #897d9d; }
 .call-panel .conversation-footer { justify-content: flex-start; }
 .call-panel .conversation-footer > svg { flex-shrink: 0; color: #99a3af; }
 

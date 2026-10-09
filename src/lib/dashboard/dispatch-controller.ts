@@ -1,3 +1,4 @@
+import { demoPhone, type DemoCallTargets } from './demo-routing.ts';
 import { dashboardReducer } from './state.ts';
 import { planCalls, projectHospital, type CallBatch } from './dispatch-adapter.ts';
 import { captionMessages, type DispatchJob } from './live-data.ts';
@@ -14,6 +15,7 @@ export class DispatchController {
   private sending=new Set<string>();
   private searching=new Map<string,AbortController>();
   private locks=new Set<string>();
+  private demo:DemoCallTargets|null=null;
   private mode:'live'|'demo'|null=null;
   private fetcher:typeof fetch;
   private key:()=>string;
@@ -43,6 +45,10 @@ export class DispatchController {
     this.commit({...this.state,cases:dashboardReducer({cases:this.state.cases,runtime:{}},action).cases});
   }
   setMode(mode:'live'|'demo'){this.mode=mode;}
+  setDemoTargets(targets:DemoCallTargets|null){
+    this.demo=targets;
+    this.commit({...this.state,cases:this.state.cases.map(c=>({...c,hospitals:c.hospitals.map(h=>({...h,demoPhone:targets?demoPhone(h.name,targets):undefined}))}))});
+  }
   addCase(reception:EmergencyCase){this.reduce({type:'add',reception});}
   savePatient(caseId:string,patient:Patient){this.reduce({type:'save',caseId,patient});}
   async searchHospitals(caseId:string,patient:Patient,parameters:HospitalSearch){
@@ -57,7 +63,7 @@ export class DispatchController {
       const response=await this.fetcher('/api/hospitals/candidates',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify(parameters)});
       const result=await response.json();
       if(!response.ok)throw new Error(result.error||'병원 조회에 실패했습니다.');
-      if(!controller.signal.aborted)this.reduce({type:'searchResult',caseId,requestId,result:result as HospitalSearchResult});
+      if(!controller.signal.aborted){this.reduce({type:'searchResult',caseId,requestId,result:result as HospitalSearchResult});this.setDemoTargets(this.demo);}
     }catch(error){if(!controller.signal.aborted)this.reduce({type:'searchError',caseId,requestId,error:error instanceof Error?error.message:'조회 실패'});}
     finally{if(this.searching.get(caseId)===controller)this.searching.delete(caseId);}
   }
@@ -76,16 +82,31 @@ export class DispatchController {
       const uncertain=hospitalId?this.state.batches.find(b=>!b.jobId && b.targets.some(t=>t.id===hospitalId)):undefined;
       const ids=reception.hospitals.filter(h=>hospitalId?h.id===hospitalId&&h.status==='error':h.status==='pending').map(h=>h.id);
       if(!ids.length)return;
-      const plan=uncertain?{batches:[uncertain],skipped:[]}:planCalls(reception,ids,this.key);
+      const simulated=new Set<string>();
+      let routed=reception;
+      if(this.demo){
+        const targets=this.demo,numbers=new Set<string>();
+        routed={...reception,hospitals:reception.hospitals.map(h=>{
+          if(!ids.includes(h.id))return h;
+          const phone=demoPhone(h.name,targets);
+          if(!phone || numbers.has(phone)){simulated.add(h.id);return h;}
+          numbers.add(phone);
+          return {...h,demoPhone:phone};
+        })};
+        if(uncertain && uncertain.body.hospitals.some(h=>demoPhone(h.name,targets)!==h.phone))
+          throw new Error('이전 요청은 데모 수신번호와 다릅니다. 새 병원 조회로 데모를 시작하세요.');
+      }
+      const plan=uncertain?{batches:[uncertain],skipped:[]}:planCalls(routed,ids.filter(id=>!simulated.has(id)),this.key);
       this.errors(caseId,plan.skipped);
-      if(!plan.batches.length)return;
+      if(!plan.batches.length && !simulated.size)return;
       const list=plan.batches.flatMap(b=>b.body.hospitals).map(h=>`${h.name}: ${h.phone}`).join('\n');
       if(!confirm(this.mode==='live'
         ?`실제 전화 발신입니다. 통화 비용이 발생하며 입력한 환자 정보가 병원에 전달됩니다.\n${list}\n${uncertain?'이전 요청의 상태를 같은 요청 키로 확인합니다.':'위 병원들에 병렬로 전화를 걸까요?'}`
         :`모의 통화로 연결합니다. 실제 발신은 없습니다.\n${list}`))return;
       const targets=new Set(plan.batches.flatMap(b=>b.targets.map(t=>t.id)));
+      const now=Date.now();
       const next={...this.state,batches:[...this.state.batches.filter(b=>!plan.batches.some(n=>n.key===b.key)),...plan.batches],
-        cases:this.state.cases.map(c=>c.id!==caseId?c:{...c,status:'searching' as const,hospitals:c.hospitals.map(h=>targets.has(h.id)?{...h,status:'calling' as const,messages:[],callSeconds:0,note:'발신 요청 중'}:h)})};
+        cases:this.state.cases.map(c=>c.id!==caseId?c:{...c,status:'searching' as const,hospitals:c.hospitals.map((h,index)=>simulated.has(h.id)?{...h,status:'calling' as const,messages:[],callSeconds:0,note:'데모 연결 대기 · 실제 발신 없음',demoNoAnswerAt:now+8000+(index%5)*1000}:targets.has(h.id)?{...h,status:'calling' as const,messages:[],callSeconds:0,note:'발신 요청 중'}:h)})};
       // Persist BEFORE POST so reload/reconnect cannot create a second outbound call.
       this.storage?.setItem(storageKey,JSON.stringify(next));
       this.commit(next);
@@ -121,6 +142,9 @@ export class DispatchController {
       const batches=this.state.batches.filter(b=>b.caseId===reception.id && b.jobId);
       return {...reception,elapsedSeconds:reception.elapsedSeconds+(reception.status==='completed'?0:delta),
         hospitals:reception.hospitals.map(original=>{
+          if(original.demoNoAnswerAt)return now>=original.demoNoAnswerAt
+            ?{...original,status:'no_answer' as const,note:'미응답 · 데모 시뮬레이션 (실제 발신 없음)',callSeconds:0,messages:[]}
+            :original;
           const batch=batches.findLast(b=>b.targets.some(t=>t.id===original.id));
           const target=batch?.targets.find(t=>t.id===original.id);
           const call=batch?.jobId&&this.state.jobs[batch.jobId]?.hospitals.find(h=>h.phone===target?.phone);

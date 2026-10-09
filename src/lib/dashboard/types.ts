@@ -1,6 +1,6 @@
 import type { HospitalCandidate, HospitalSearch, HospitalSearchResult } from "../hospitals";
 
-export type CallStatus = "pending" | "calling" | "unavailable" | "available" | "error";
+export type CallStatus = "pending" | "calling" | "unavailable" | "available" | "error" | "no_answer";
 export type CaseStatus = "draft" | "ready" | "searching" | "assigned" | "completed";
 
 export interface Patient {
@@ -45,6 +45,8 @@ export interface Hospital {
   distance: number;
   eta: number | null;
   candidate?: HospitalCandidate;
+  demoPhone?: string;
+  demoNoAnswerAt?: number;
   status: CallStatus;
   note: string;
   callSeconds: number;
@@ -85,6 +87,7 @@ export const CALL_STATUS: Record<CallStatus, { label: string; shortLabel: string
   calling: { label: "통화 진행 중", shortLabel: "통화 중", color: "#eb791f" },
   available: { label: "이송 가능", shortLabel: "이송 가능", color: "#16856b" },
   unavailable: { label: "이송 불가", shortLabel: "이송 불가", color: "#d95960" },
+  no_answer: { label: "미응답", shortLabel: "미응답", color: "#77758b" },
   error: { label: "API 응답 오류", shortLabel: "응답 오류", color: "#77758b" },
 };
 

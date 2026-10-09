@@ -364,3 +364,14 @@ Supabase는 도입 예정입니다. 개발·빌드는 현재 Webpack을 사용�
 ```bash
 node --experimental-strip-types --test tests/dispatch-controller.test.mjs tests/live-dashboard.test.mjs
 ```
+
+### 두 병원 전화 시연
+
+로컬 `.env`에서 `DEMO_CALL_ROUTING=true`, `DEMO_GANGNAM_PHONE`, `DEMO_CHUNGANG_PHONE`을
+설정하면 지도 일괄 전화는 강남세브란스와 중앙대병원에 대응하는 테스트 휴대폰(E.164)으로만
+발신합니다. 나머지 후보는 실제 요청을 보내지 않고 8~12초 뒤 ‘미응답’으로 표시합니다.
+`APP_MODE=live`에서 두 휴대폰 통화는 실제 통화이며, 환자 정보와 대화·수용 결과는 기존 흐름을 사용합니다.
+후보 목록에 없는 병원은 새로 만들지 않으며, ETA 누락은 기존 발신 오류로 처리합니다.
+서버 프록시에서도 지정 병원·번호 외 발신을 거부합니다. 번호는 환경변수에만 보관합니다.
+새로고침은 재발신하지 않으며, 반복 시연은 통화 종료 후 병원을 다시 조회하고 버튼을 누릅니다.
+일반 발신으로 복귀하려면 `DEMO_CALL_ROUTING=false`로 바꾸고 프론트 서버를 재시작하세요.

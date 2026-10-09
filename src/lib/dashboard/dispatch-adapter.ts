@@ -45,7 +45,7 @@ export function planCalls(reception: EmergencyCase, targetIds: string[], key: ()
   const eligible: { hospital:Hospital; phone:string }[] = [], numbers = new Set<string>();
   for (const hospital of reception.hospitals.filter(h=>targetIds.includes(h.id))) {
     try {
-      const phone = phoneNumber(hospital.candidate?.emergencyPhone || hospital.candidate?.phone || '');
+      const phone = phoneNumber(hospital.demoPhone || hospital.candidate?.emergencyPhone || hospital.candidate?.phone || '');
       if (hospital.eta === null || !Number.isInteger(hospital.eta) || hospital.eta < 1 || hospital.eta > 360)
         throw new Error('도착시간이 확인되지 않아 발신하지 않았습니다. 경로를 다시 조회하세요.');
       if (numbers.has(phone)) throw new Error('같은 전화번호의 중복 후보입니다. 해당 번호에는 한 번만 발신합니다.');

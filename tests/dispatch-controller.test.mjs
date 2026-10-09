@@ -89,3 +89,27 @@ test('projection never replaces hospital geography or interprets missing result 
   assert.equal(projectHospital(c.hospitals[0],{...call,phase:'processing'},Date.parse(clock)).note,'통화 종료 · 결과 판정 중');
   assert.equal(projectHospital(c.hospitals[0],{...call,result:{availability:'rejected'}},Date.parse(clock)).status,'unavailable');
 });
+
+test('presentation calls only two mapped mobiles; others become no-answer after reload without any POST',async()=>{
+  const c=fixture(5),storage=memory(),posts=[];
+  c.hospitals[0].name='연세대학교의과대학강남세브란스병원';
+  c.hospitals[1].name='중앙대학교병원';
+  c.hospitals[2].name='중앙대학교광명병원';
+  c.hospitals[3].name='강남세브란스병원'; // Duplicate candidate must not redial.
+  const targets={gangnam:'+821011111111',chungang:'+821022222222'};
+  const controller=new DispatchController([c],async(url,options)=>{
+    posts.push(JSON.parse(options.body));return Response.json(job(posts.at(-1)));
+  });
+  controller.restore(storage);controller.setMode('live');controller.setDemoTargets(targets);
+  await controller.startCalls(c.id,()=>true);
+  assert.equal(posts.length,1);
+  assert.deepEqual(posts[0].hospitals.map(h=>h.phone),Object.values(targets));
+  assert.equal(controller.state.cases[0].hospitals[0].demoPhone,targets.gangnam);
+  assert.ok(controller.state.cases[0].hospitals.slice(2).every(h=>h.status==='calling'&&h.demoNoAnswerAt));
+  const restored=new DispatchController([c],async()=>assert.fail('must not send another call'));
+  restored.restore(storage);restored.setMode('live');restored.setDemoTargets(targets);
+  restored.tick(Date.now()+13000,13);
+  assert.ok(restored.state.cases[0].hospitals.slice(2).every(h=>h.status==='no_answer'&&h.messages.length===0));
+  await restored.startCalls(c.id,()=>true,c.hospitals[2].id);
+  assert.equal(posts.length,1);
+});

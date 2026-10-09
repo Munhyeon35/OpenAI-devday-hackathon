@@ -14,13 +14,14 @@ const initialCases:EmergencyCase[]=DEMO_CASES.map(reception=>({...reception,stat
     radiusKm:20,limit:10,departments:[],procedures:[],equipment:[],beds:[],includeUnknown:true}}}));
 export function useDemoDashboard(){
   const [controller]=useState(()=>new DispatchController(initialCases));
+  const [demoRouting,setDemoRouting]=useState(false);
   const [mode,setMode]=useState<'live'|'demo'|null>(null);
   const state=useSyncExternalStore(controller.subscribe,controller.snapshot,controller.snapshot);
   useEffect(()=>{
     controller.restore(window.sessionStorage);
     const abort=new AbortController();
     void fetch('/api/config',{signal:abort.signal}).then(async response=>{
-      if(response.ok){const config=await response.json();if(config.mode==='live'||config.mode==='demo'){controller.setMode(config.mode);setMode(config.mode);}}
+      if(response.ok){const config=await response.json();if(config.mode==='live'||config.mode==='demo'){controller.setDemoTargets(config.demo_call_targets || null);setDemoRouting(Boolean(config.demo_call_targets));controller.setMode(config.mode);setMode(config.mode);}}
     }).catch(()=>{});
     const stream=new EventSource('/api/dispatches/events');
     const receive=(event:MessageEvent)=>{try{
@@ -33,7 +34,7 @@ export function useDemoDashboard(){
     return()=>{abort.abort();stream.close();window.clearInterval(interval);controller.disconnect();};
   },[controller]);
   const report=(error:unknown)=>window.alert(error instanceof Error?error.message:'요청을 처리하지 못했습니다.');
-  return {cases:state.cases,mode,
+  return {cases:state.cases,mode,demoRouting,
     getStream:(reception:EmergencyCase,hospital:Hospital|undefined)=>controller.getStream(reception,hospital),
     addCase:(reception:EmergencyCase)=>controller.addCase(reception),
     savePatient:(caseId:string,patient:Patient)=>controller.savePatient(caseId,patient),

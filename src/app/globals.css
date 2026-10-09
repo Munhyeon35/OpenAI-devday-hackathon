@@ -179,7 +179,7 @@ button svg { flex-shrink: 0; }
 .status-dot.calling { background: var(--calling); }
 .status-dot.available { background: var(--available); }
 .status-dot.unavailable { background: var(--unavailable); }
-.status-dot.error { background: var(--error); }
+.status-dot.error, .status-dot.no_answer { background: var(--error); }
 .map-demo-note { position: absolute; z-index: 10; left: 22px; bottom: 8px; font-size: var(--dashboard-text-caption); color: #4f554d; text-shadow: 0 1px #fff, 1px 0 #fff, -1px 0 #fff, 0 -1px #fff; margin: 0; }
 .olp-map-controls { bottom: 72px; }
 
@@ -197,7 +197,7 @@ button svg { flex-shrink: 0; }
 .history-timeline li:last-child { padding-bottom: 0; }
 .history-timeline li:last-child:before { display: none; }
 .timeline-dot { width: 9px; height: 9px; flex-shrink: 0; border: 2px solid white; box-shadow: 0 0 0 1px #d8d8df; border-radius: 50%; margin-top: 3px; background: #aaaab2; z-index: 1; }
-.timeline-dot.calling { background: var(--calling); }.timeline-dot.available { background: var(--available); }.timeline-dot.unavailable { background: var(--unavailable); }.timeline-dot.error { background: var(--error); }
+.timeline-dot.calling { background: var(--calling); }.timeline-dot.available { background: var(--available); }.timeline-dot.unavailable { background: var(--unavailable); }.timeline-dot.error, .timeline-dot.no_answer { background: var(--error); }
 .history-timeline time { display: flex; align-items: center; gap: 5px; font-size: var(--dashboard-text-caption); color: #7e7e87; }
 .history-timeline h3 { font-size: var(--dashboard-text-body); font-weight: 650; margin: 8px 0 6px; }
 .history-timeline p { font-size: var(--dashboard-text-body); color: #707079; line-height: 1.7; }

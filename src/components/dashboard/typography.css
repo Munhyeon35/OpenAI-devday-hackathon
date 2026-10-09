@@ -1,4 +1,4 @@
-/* Readability pass: keep dashboard text at 12px or larger and strengthen muted copy. */
+/* Readability pass: keep dashboard text at 13px or larger and strengthen muted copy. */
 .call-panel .hospital-info .hospital-meta,
 .call-panel .hospital-eta > span,
 .call-panel .conversation-footer,
@@ -14,7 +14,7 @@
   font-size: var(--dashboard-text-meta);
 }
 
-.call-panel .hospital-eta strong { font-size: 24px; }
+.call-panel .hospital-eta strong { font-size: 26px; }
 .call-panel .demo-mini,
 .call-panel .conversation-start,
 .call-panel .message time,
@@ -56,12 +56,13 @@
   font-size: var(--dashboard-text-meta);
 }
 .pp-edit-button { color: #626a75; }
-.pp-stage-block > strong { font-size: 36px; }
+.pp-stage-block > strong { font-size: 38px; }
 .pp-symptom-meta { color: #7b8088; }
 .pp-vitals dt { color: #737b85; }
-.pp-detail-group h3 { font-size: 16px; }
+.pp-vitals dd { font-size: 26px; }
+.pp-detail-group h3 { font-size: 17px; }
 .pp-detail-group dl > div { font-size: var(--dashboard-text-body); }
-.pp-dialog-header h2 { font-size: 26px; }
+.pp-dialog-header h2 { font-size: 28px; }
 .pp-dialog-header p { color: #747c86; font-size: var(--dashboard-text-body); }
 .pp-form-hint { color: #77808a; }
 .pp-dialog-actions > p { color: #78818c; }
@@ -73,7 +74,7 @@
 
 .reception-sidebar-ui .reception-card[data-sidebar="menu-button"] { font-size: var(--dashboard-text-body); }
 .reception-sidebar-ui .reception-number strong { font-size: var(--dashboard-text-meta); }
-.reception-sidebar-ui.is-collapsed .reception-number strong { font-size: 18px; }
+.reception-sidebar-ui.is-collapsed .reception-number strong { font-size: 19px; }
 .reception-history-dialog .history-reception-badge {
   color: #965f37;
   font-size: var(--dashboard-text-caption);
@@ -98,7 +99,7 @@ body .candidate-empty,
 body .candidate-hospital-heading > strong {
   font-size: var(--dashboard-text-body);
 }
-body .candidate-hospital-heading h3 { font-size: 17px; }
+body .candidate-hospital-heading h3 { font-size: 18px; }
 body .candidate-hospital small,
 body .candidate-badges span,
 body .candidate-source {
